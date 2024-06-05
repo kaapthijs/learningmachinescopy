@@ -76,3 +76,30 @@ def run_all_actions(rob: IRobobo):
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
+
+def move_robot(rob: IRobobo):
+    """Moves the robot straight until an object is detected, then turns right."""
+    if isinstance(rob, SimulationRobobo): 
+        rob.play_simulation()
+
+    ir_values = rob.read_irs()
+
+    # IR sensors detect an object
+    if all(value < 20 for value in ir_values[2:6]):  # threshold value 
+        # Stop moving forward
+        rob.move(0, 0, 0)
+        rob.sleep(0.5)
+
+        # Turn right
+        rob.move(50, -50, 1000) 
+        #rob.block()
+
+    else:
+        # Move forward
+        rob.move(50, 50, 1000)
+        #rob.block()
+    
+    rob.sleep(0.1)
+
+        #if isinstance(rob, SimulationRobobo):
+            #rob.stop_simulation()

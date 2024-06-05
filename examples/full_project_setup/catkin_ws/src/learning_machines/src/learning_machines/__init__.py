@@ -1,3 +1,4 @@
-from .test_actions import run_all_actions
+from .test_actions import run_all_actions, move_robot
 
-__all__ = ("run_all_actions",)
+#__all__ = ("run_all_actions",)
+__all__ = ("move_robot",)
