@@ -103,3 +103,40 @@ def move_robot(rob: IRobobo):
 
         #if isinstance(rob, SimulationRobobo):
             #rob.stop_simulation()
+
+def avoid_object(rob: IRobobo):
+    """
+    This function directs the robot to move straight until it detects an object nearby.
+    Upon detection, the robot will change its emotion to indicate awareness or caution,
+    then turn right to avoid the object.
+    """
+    if isinstance(rob, SimulationRobobo): 
+        rob.play_simulation()
+
+    while True:
+        ir_values = rob.read_irs()
+        print("ir value: ", ir_values[4])
+
+        # Check if any of the front sensors detect an object within a close range
+        #if any(value > 15 for value in ir_values[2:4]):  # threshold value as needed
+        if ir_values[4] > 15 and ir_values[4] < 1500:
+            rob.set_emotion(Emotion.SURPRISED)  # change the robot's emotion
+            rob.talk("Oh object detected!")  # have the robot acknowledge the detection
+            
+            # Stop moving forward
+            rob.move(0, 0, 0)
+            rob.sleep(0.5)
+            
+            # Turn right
+            rob.move(-50, 50, 800)  # speed values
+            rob.sleep(1)
+            #break  # Exit the loop if you only want to avoid one obstacle, or continue if scanning for more
+
+        else:
+            # Continue moving forward
+            rob.move(50, 50, 1000)
+
+    rob.sleep(1)  
+
+    if isinstance(rob, SimulationRobobo):
+        rob.stop_simulation()

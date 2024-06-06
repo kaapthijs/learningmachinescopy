@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import run_all_actions, move_robot
+from learning_machines import run_all_actions, move_robot, avoid_object
 
 
 if __name__ == "__main__":
@@ -19,5 +19,6 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
-    move_robot(rob)
+    #move_robot(rob)
     #run_all_actions(rob)
+    avoid_object(rob)
