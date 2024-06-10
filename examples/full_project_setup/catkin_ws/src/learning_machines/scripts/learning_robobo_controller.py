@@ -2,11 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-<<<<<<< Updated upstream
-from learning_machines import run_all_actions, move_robot
-=======
 from learning_machines import run_all_actions, move_robot, avoid_object, navigate_with_q_learning, train_q_table
->>>>>>> Stashed changes
 
 
 if __name__ == "__main__":
@@ -25,9 +21,6 @@ if __name__ == "__main__":
 
     move_robot(rob)
     #run_all_actions(rob)
-<<<<<<< Updated upstream
-=======
     #avoid_object(rob)
     #navigate_with_q_learning(rob)
     train_q_table
->>>>>>> Stashed changes
