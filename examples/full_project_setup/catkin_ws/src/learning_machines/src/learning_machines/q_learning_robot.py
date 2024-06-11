@@ -141,24 +141,31 @@ def train_q_table(rob, q_table, num_episodes=1000, max_steps=100, alpha=0.1, gam
 
         done = False
         while not done:
-            # Choose an action using epsilon-greedy policy
-            action_index = choose_action(state, q_table, epsilon)
-            action = actions[action_index]
+            try:
+                # Choose an action using epsilon-greedy policy
+                action_index = choose_action(state, q_table, epsilon)
+                action = actions[action_index]
 
-            # Take the action and observe the next state and reward
-            next_state, reward = simulate_robot_action(rob, action)
-            print("Next state:", next_state, "Reward:", reward)  # Debug statement
+                # Take the action and observe the next state and reward
+                next_state, reward = simulate_robot_action(rob, action)
+                print("Next state:", next_state, "Reward:", reward)  # Debug statement
 
-            # Update the Q-table
-            best_next_action = np.argmax(q_table[next_state])
-            q_table[state][action_index] += alpha * (reward + gamma * q_table[next_state][best_next_action] - q_table[state][action_index])
-            
-            state = next_state
+                # Update the Q-table
+                best_next_action = np.argmax(q_table[next_state])
+                q_table[state][action_index] += alpha * (reward + gamma * q_table[next_state][best_next_action] - q_table[state][action_index])
+                
+                state = next_state
 
-            step += 1
-            print("Step: ", step)
-            if reward == -50 or step >= max_steps:
-                done = True
+                step += 1
+                print("Episode: ", episode, "Step: ", step)
+                if reward == -50 or step >= max_steps or next_state == 0:
+                    done = True
+                    if isinstance(rob, SimulationRobobo):
+                        rob.stop_simulation()
+
+            except Exception as e:
+                print("An error occurred:", e)
+                done = True  # End the episode if an error occurs
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
 
