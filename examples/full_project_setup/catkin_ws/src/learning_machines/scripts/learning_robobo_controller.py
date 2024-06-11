@@ -22,10 +22,9 @@ if __name__ == "__main__":
     #move_robot(rob)
     #run_all_actions(rob)
     #avoid_object(rob)
-    
-    #navigate_with_q_learning(rob)
 
     # Load or initialize Q-table
     q_table = initialize_q_table()
 
-    train_q_table(rob, q_table)
+    #train_q_table(rob, q_table)
+    navigate_with_q_learning(rob)
