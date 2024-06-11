@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import run_all_actions, move_robot, avoid_object, navigate_with_q_learning, train_q_table
+from learning_machines import run_all_actions, move_robot, navigate_with_q_learning, train_q_table, initialize_q_table
 
 
 if __name__ == "__main__":
@@ -19,8 +19,13 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
-    move_robot(rob)
+    #move_robot(rob)
     #run_all_actions(rob)
     #avoid_object(rob)
+    
     #navigate_with_q_learning(rob)
-    train_q_table
+
+    # Load or initialize Q-table
+    q_table = initialize_q_table()
+
+    train_q_table(rob, q_table)
