@@ -91,9 +91,13 @@ def navigate_with_q_learning(rob, q_table_file='q_table.pkl'):
 
         rob.sleep(0.1)
 
-        if any(value > 15 for value in selected_values): 
+        ir_values = rob.read_irs()
+        selected_values = ir_values[4:6] + [ir_values[7]]
+
+        print(selected_values)
+
+        if any(value > 15 and value < 1500 for value in selected_values): 
             print("Hit")
-            print(selected_values)
             break
     
     if isinstance(rob, SimulationRobobo):
@@ -127,7 +131,7 @@ def simulate_robot_action(rob, action=None):
 
     # Check if any of the sensors exceed their respective thresholds
     #if any((value > threshold1 and idx < 2) or (value > threshold2 and idx < 4) or (value > threshold_rest and idx >= 4) for idx, value in enumerate(selected_values)):
-    if any(value > 15 for value in selected_values):    
+    if any(value > 15 and value < 1500 for value in selected_values):    
         reward = -50  # Penalty for hitting an object
     else:
         reward = 1  # Default reward
@@ -142,7 +146,7 @@ def simulate_robot_action(rob, action=None):
     return next_state, reward
 
 
-def train_q_table(rob, q_table, num_episodes=1000, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, q_table, num_episodes=200, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
     for episode in range(num_episodes):
         # Reset the environment and get the initial state
         if isinstance(rob, SimulationRobobo): 
