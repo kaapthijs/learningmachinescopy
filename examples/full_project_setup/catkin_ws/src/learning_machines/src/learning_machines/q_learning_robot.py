@@ -93,9 +93,9 @@ def simulate_robot_action(rob, action=None):
     if action == 'forward':
         rob.move(50, 50, 1000)
     elif action == 'left':
-        rob.move(50, -50, 800)
+        rob.move(50, -50, 500)
     elif action == 'right':
-        rob.move(-50, 50, 800)
+        rob.move(-50, 50, 500)
     #else:
         # Default action: move forward
         #rob.move(50, 50, 1000)
@@ -113,12 +113,14 @@ def simulate_robot_action(rob, action=None):
 
     # Check if any of the sensors exceed their respective thresholds
     if any((value > threshold1 and idx < 2) or (value > threshold2 and idx < 4) or (value > threshold_rest and idx >= 4) for idx, value in enumerate(selected_values)):
-        reward = -5  # Penalty for hitting an object
+        reward = -50  # Penalty for hitting an object
     else:
         reward = 1  # Default reward
 
-    #if action == 'forward':
-        #reward *= 5 
+    if action == 'forward' and reward != -50:
+        forward_reward = 9
+        reward += forward_reward
+
     return next_state, reward
 
 
@@ -154,7 +156,8 @@ def train_q_table(rob, q_table, num_episodes=1000, max_steps=100, alpha=0.1, gam
             state = next_state
 
             step += 1
-            if reward == -5 or step >= max_steps:
+            print("Step: ", step)
+            if reward == -50 or step >= max_steps:
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
