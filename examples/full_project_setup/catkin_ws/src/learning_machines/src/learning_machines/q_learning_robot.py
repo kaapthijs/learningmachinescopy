@@ -47,7 +47,9 @@ def choose_action(state, q_table, epsilon=0.1):
 def get_state_from_ir_values(ir_values, num_bins=4, num_sensors=4):
     # Define the bin edges and corresponding state values
     def bin_value(value):
-        if value < 6:
+        if value == float('inf'):
+            return 0  # No detection or sensor error
+        elif value < 6:
             return 0  # No detection
         elif value < 10:
             return 1  # Detected 
@@ -87,24 +89,23 @@ def navigate_with_q_learning(rob):
         rob.sleep(1)
 
 def simulate_robot_action(rob, action=None):
-    print(f"Simulating action: {action}")
+    #print(f"Simulating action: {action}")
     if action == 'forward':
         rob.move(50, 50, 1000)
     elif action == 'left':
         rob.move(50, -50, 800)
     elif action == 'right':
         rob.move(-50, 50, 800)
-    else:
+    #else:
         # Default action: move forward
-        rob.move(50, 50, 1000)
+        #rob.move(50, 50, 1000)
         
     rob.sleep(1)
 
     ir_values = rob.read_irs()
     selected_values = ir_values[2:5] + [ir_values[7]]
     next_state = get_state_from_ir_values(selected_values)
-    reward = -1 if any(value > 15 and value < 1500 for value in selected_values) else 1  # Penalty for hitting object, reward otherwise
-    
+    reward = -1 if any((150 < value < 1500) for value in selected_values) else 1
     return next_state, reward
 
 
@@ -118,6 +119,7 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
         #rob.reset()  # Assume we have a reset method to start from a known state
         ir_values = rob.read_irs()
         selected_values = ir_values[2:5] + [ir_values[7]]
+        print(selected_values)
         state = get_state_from_ir_values(selected_values)
 
         done = False
@@ -128,7 +130,8 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
 
             # Take the action and observe the next state and reward
             next_state, reward = simulate_robot_action(rob, action)
-            
+            print("Next state:", next_state, "Reward:", reward)  # Debug statement
+
             # Update the Q-table
             best_next_action = np.argmax(q_table[next_state])
             q_table[state][action_index] += alpha * (reward + gamma * q_table[next_state][best_next_action] - q_table[state][action_index])
@@ -139,7 +142,6 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
-                    print("End simulation: ", episode)
 
 
     # Save the trained Q-table
