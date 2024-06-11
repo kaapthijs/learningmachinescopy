@@ -18,7 +18,7 @@ from robobo_interface import (
 # Define actions
 actions = ['forward', 'left', 'right']
 
-def initialize_q_table(file_path='q_table.pkl', num_bins=4, num_sensors=4):
+def initialize_q_table(file_path='q_table.pkl', num_bins=4, num_sensors=5):
     """Load the Q-table from a file if it exists; otherwise, initialize a new Q-table."""
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
@@ -44,7 +44,7 @@ def choose_action(state, q_table, epsilon=0.1):
     else:
         return np.argmax(q_table[state])
 
-def get_state_from_ir_values(ir_values, num_bins=4, num_sensors=4):
+def get_state_from_ir_values(ir_values, num_bins=4, num_sensors=5):
     # Define the bin edges and corresponding state values
     def bin_value(value):
         if value == float('inf'):
@@ -103,14 +103,26 @@ def simulate_robot_action(rob, action=None):
     rob.sleep(1)
 
     ir_values = rob.read_irs()
-    selected_values = ir_values[2:5] + [ir_values[7]]
+    selected_values = ir_values[2:6] + [ir_values[7]]
     print(selected_values)
     next_state = get_state_from_ir_values(selected_values)
-    reward = -1 if any((25 < value < 1500) for value in selected_values) else 1 # change values accordingly
+    # Apply different thresholds for the first two sensors and the remaining sensors
+    threshold1 = 75 #left
+    threshold2 = 75 #right
+    threshold_rest = 15 # center, fleft, fright
+
+    # Check if any of the sensors exceed their respective thresholds
+    if any((value > threshold1 and idx < 2) or (value > threshold2 and idx < 4) or (value > threshold_rest and idx >= 4) for idx, value in enumerate(selected_values)):
+        reward = -5  # Penalty for hitting an object
+    else:
+        reward = 1  # Default reward
+
+    #if action == 'forward':
+        #reward *= 5 
     return next_state, reward
 
 
-def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, q_table, num_episodes=1000, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
     for episode in range(num_episodes):
         # Reset the environment and get the initial state
         if isinstance(rob, SimulationRobobo): 
@@ -119,7 +131,9 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
 
         #rob.reset()  # Assume we have a reset method to start from a known state
         ir_values = rob.read_irs()
-        selected_values = ir_values[2:5] + [ir_values[7]]
+        selected_values = ir_values[2:6] + [ir_values[7]]
+
+        step = 0
 
         state = get_state_from_ir_values(selected_values)
 
@@ -139,7 +153,8 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
             
             state = next_state
 
-            if reward == -1:  # Assuming the episode ends if the robot hits an object
+            step += 1
+            if reward == -5 or step >= max_steps:
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
