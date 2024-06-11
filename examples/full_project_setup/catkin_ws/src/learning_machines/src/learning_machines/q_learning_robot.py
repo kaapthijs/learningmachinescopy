@@ -93,22 +93,22 @@ def simulate_robot_action(rob, action=None):
     if action == 'forward':
         rob.move(50, 50, 1000)
     elif action == 'left':
-        rob.move(50, -50, 500)
+        rob.move(50, 10, 500)
     elif action == 'right':
-        rob.move(-50, 50, 500)
+        rob.move(10, 50, 500)
     #else:
         # Default action: move forward
         #rob.move(50, 50, 1000)
         
-    rob.sleep(1)
+    #rob.sleep(1)
 
     ir_values = rob.read_irs()
     selected_values = ir_values[2:6] + [ir_values[7]]
     print(selected_values)
     next_state = get_state_from_ir_values(selected_values)
     # Apply different thresholds for the first two sensors and the remaining sensors
-    threshold1 = 75 #left
-    threshold2 = 75 #right
+    threshold1 = 100 #left
+    threshold2 = 100 #right
     threshold_rest = 15 # center, fleft, fright
 
     # Check if any of the sensors exceed their respective thresholds
@@ -118,13 +118,16 @@ def simulate_robot_action(rob, action=None):
         reward = 1  # Default reward
 
     if action == 'forward' and reward != -50:
-        forward_reward = 9
+        forward_reward = 4
         reward += forward_reward
+
+    if next_state == 0:
+        reward = -50
 
     return next_state, reward
 
 
-def train_q_table(rob, q_table, num_episodes=1000, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, q_table, num_episodes=100, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
     for episode in range(num_episodes):
         # Reset the environment and get the initial state
         if isinstance(rob, SimulationRobobo): 
