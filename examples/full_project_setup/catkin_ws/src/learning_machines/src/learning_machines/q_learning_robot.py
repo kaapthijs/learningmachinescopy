@@ -104,8 +104,9 @@ def simulate_robot_action(rob, action=None):
 
     ir_values = rob.read_irs()
     selected_values = ir_values[2:5] + [ir_values[7]]
+    print(selected_values)
     next_state = get_state_from_ir_values(selected_values)
-    reward = -1 if any((150 < value < 1500) for value in selected_values) else 1
+    reward = -1 if any((25 < value < 1500) for value in selected_values) else 1 # change values accordingly
     return next_state, reward
 
 
@@ -119,7 +120,7 @@ def train_q_table(rob, q_table, num_episodes=1000, alpha=0.1, gamma=0.9, epsilon
         #rob.reset()  # Assume we have a reset method to start from a known state
         ir_values = rob.read_irs()
         selected_values = ir_values[2:5] + [ir_values[7]]
-        print(selected_values)
+
         state = get_state_from_ir_values(selected_values)
 
         done = False
