@@ -27,8 +27,11 @@ ACTIONS = ['forward', 'left', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
-NUM_BINS = 5    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,10,15]
+NUM_BINS = 4    # sensor value could be 0,1,2,3
+BIN_THRESHOLDS = [4,7,12]
+
+# Define reward point of moving forward
+FORWARD_REWARD = 9
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
@@ -95,11 +98,11 @@ def simulate_robot_action(rob, action=None):
 
     print(f"Simulating action: {action}")
     if action == 'forward':
-        rob.move_blocking(50, 50, 1000)
+        rob.move(50, 50, 1000)
     elif action == 'left':
-        rob.move_blocking(50, -10, 500)
+        rob.move(50, -10, 500)
     elif action == 'right':
-        rob.move_blocking(-10, 50, 500)
+        rob.move(-10, 50, 500)
        
     rob.sleep(0.1)
 
@@ -118,8 +121,7 @@ def simulate_robot_action(rob, action=None):
         reward = 1  # Default reward
 
     if action == 'forward' and reward != -50:
-        forward_reward = 10
-        reward += forward_reward
+        reward += FORWARD_REWARD
     
     # if falls of map, sensors are 0, then stop simulation
     if next_state == (0,) * NUM_SENSORS:
