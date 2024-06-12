@@ -27,8 +27,8 @@ ACTIONS = ['forward', 'left', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
-NUM_BINS = 4    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,10]
+NUM_BINS = 5    # sensor value could be 0,1,2,3
+BIN_THRESHOLDS = [4,7,10,15]
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
@@ -95,15 +95,12 @@ def simulate_robot_action(rob, action=None):
 
     print(f"Simulating action: {action}")
     if action == 'forward':
-        rob.move(50, 50, 1000)
+        rob.move_blocking(50, 50, 1000)
     elif action == 'left':
-        rob.move(50, -10, 500)
+        rob.move_blocking(50, -10, 500)
     elif action == 'right':
-        rob.move(-10, 50, 500)
-    #else:
-        # Default action: move forward
-        #rob.move(50, 50, 1000)
-        
+        rob.move_blocking(-10, 50, 500)
+       
     rob.sleep(0.1)
 
     ir_values = rob.read_irs()

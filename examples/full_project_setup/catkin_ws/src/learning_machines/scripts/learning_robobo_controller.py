@@ -31,7 +31,7 @@ if __name__ == "__main__":
     print_q_table(q_table)
 
     # Train the Q-table
-    train_q_table(rob, q_table, num_episodes=2)
+    train_q_table(rob, q_table, num_episodes=40)
     
     # Print the trained Q-table
     trained_q_table = load_q_table()
