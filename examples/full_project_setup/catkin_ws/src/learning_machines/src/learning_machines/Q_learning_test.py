@@ -73,7 +73,7 @@ def transform_ir_values(values, thresholds=BIN_THRESHOLDS):
     Returns:
     tuple: A tuple containing binned values.
     """
-    print(f"IR-Values are : {values}")
+    print(f"New IR-Values are : {values}")
     state = []
     for value in values:
         bin_assigned = False
@@ -138,14 +138,14 @@ def train_q_table(rob, q_table, num_episodes=50, max_steps=40, alpha=0.1, gamma=
 
         # Initialize the episode
         ir_values = rob.read_irs()
-        selected_values = [5,5,5]
+        selected_values = [5,5,5] # avoid starting with [inf, inf, inf]
     
-        state = transform_ir_values(selected_values)
+        state = (1,1,1)
         done = False
 
         for step in range(max_steps):
             print("Episode: ", episode, "Step: ", step)
-            
+
             # Choose an action, random by prob. epsilon, max, by prob 1-epsilon
             if random.uniform(0, 1) < epsilon:
                 action_index = random.randint(0, NUM_ACTIONS - 1)
@@ -156,7 +156,7 @@ def train_q_table(rob, q_table, num_episodes=50, max_steps=40, alpha=0.1, gamma=
 
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
-            print(f"in step {step}, got new state {new_state} with reward {reward}")
+            print(f"Got new reward {reward}")
             
             # Update the Q-value
             max_future_q = max(q_table[new_state])
