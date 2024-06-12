@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines.src.learning_machines.Q_learning_test import train_q_table, initialize_q_table, print_q_table,load_q_table
+from learning_machines import train_q_table, initialize_q_table, print_q_table,load_q_table
 
 if __name__ == "__main__":
     # You can do better argument parsing than this!
@@ -36,4 +36,4 @@ if __name__ == "__main__":
     # Print the trained Q-table
     trained_q_table = load_q_table()
     print("Trained Q-table:")
-    print_q_table(trained_q_table)
+    print_q_table(trained_q_table, num_entries = 81)

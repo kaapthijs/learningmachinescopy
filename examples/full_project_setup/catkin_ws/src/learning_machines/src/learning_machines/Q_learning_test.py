@@ -5,7 +5,9 @@ import os
 import itertools
 import random
 
-# from data_files import FIGRURES_DIR
+from data_files import FIGRURES_DIR
+from data_files import RESULT_DIR
+
 from robobo_interface import (
     IRobobo,
     Emotion,
@@ -30,11 +32,11 @@ BIN_THRESHOLDS = [4,7,10]
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
-    with open(file_path, 'rb') as f:
+    with open(str(RESULT_DIR / file_path), 'rb') as f:
         return pickle.load(f)
     
 def save_q_table(q_table, file_path='q_table.pkl'):
-    with open(file_path, 'wb') as f:
+    with open(str(RESULT_DIR / file_path), 'wb') as f:
         pickle.dump(q_table, f)
 
 
@@ -178,7 +180,7 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
         if episode % 10 == 0:
             save_q_table(q_table)
     
-    print(q_table)
+    print_q_table(q_table)
 
     # Save the final Q-table
     save_q_table(q_table)
