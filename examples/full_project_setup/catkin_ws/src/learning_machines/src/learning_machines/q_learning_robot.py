@@ -146,7 +146,7 @@ def simulate_robot_action(rob, action=None):
     return next_state, reward
 
 
-def train_q_table(rob, q_table, num_episodes=200, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, q_table, num_episodes=2, max_steps=100, alpha=0.1, gamma=0.9, epsilon=0.1):
     for episode in range(num_episodes):
         # Reset the environment and get the initial state
         if isinstance(rob, SimulationRobobo): 

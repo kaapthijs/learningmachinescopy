@@ -26,7 +26,7 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
 NUM_BINS = 4    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,15]
+BIN_THRESHOLDS = [4,7,10]
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
@@ -130,7 +130,7 @@ def simulate_robot_action(rob, action=None):
     return next_state, reward, done
 
 # Training function using Q-learning
-def train_q_table(rob, q_table, num_episodes=50, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     for episode in range(num_episodes):
         if isinstance(rob, SimulationRobobo):
             rob.play_simulation()
@@ -177,6 +177,8 @@ def train_q_table(rob, q_table, num_episodes=50, max_steps=40, alpha=0.1, gamma=
         # Optionally save Q-table periodically
         if episode % 10 == 0:
             save_q_table(q_table)
+    
+    print(q_table)
 
     # Save the final Q-table
     save_q_table(q_table)
