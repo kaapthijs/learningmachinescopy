@@ -13,4 +13,4 @@ param(
 $h = if ($headless.IsPresent) {"-h"} else {""}
 
 # Presumes you have CoppeliaSim extracted to ./CoppeliaSim
-.\CoppeliaSim\coppeliaSim.exe "$scenePath" "-GzmqRemoteApi.rpcPort=$($apiPort)"
+.\CoppeliaSim\coppeliaSim.exe "$scenePath" $h "-GzmqRemoteApi.rpcPort=$($apiPort)"
