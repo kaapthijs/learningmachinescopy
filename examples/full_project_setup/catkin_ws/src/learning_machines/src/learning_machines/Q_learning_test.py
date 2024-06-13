@@ -27,8 +27,8 @@ ACTIONS = ['left', 'forward', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
-NUM_BINS = 4    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,25]
+NUM_BINS = 6    # sensor value could be 0,1,2,3
+BIN_THRESHOLDS = [4,7,10,15,25]
 BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define reward point of moving forward
@@ -203,7 +203,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             # Transition to the new state
             state = new_state
 
-            if reward == HIT_PENALTY or step >= max_steps: 
+            if reward == HIT_PENALTY or step >= max_steps-1: 
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
