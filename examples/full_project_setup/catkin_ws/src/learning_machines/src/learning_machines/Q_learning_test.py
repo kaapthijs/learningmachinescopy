@@ -28,10 +28,11 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
 NUM_BINS = 4    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,12]
+BIN_THRESHOLDS = [4,7,25]
+BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define reward point of moving forward
-FORWARD_REWARD = 9
+FORWARD_REWARD = 11
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
@@ -98,11 +99,11 @@ def simulate_robot_action(rob, action=None):
 
     print(f"Simulating action: {action}")
     if action == 'forward':
-        rob.move(50, 50, 1000)
+        rob.move_blocking(50, 50, 1000)
     elif action == 'left':
-        rob.move(50, -10, 500)
+        rob.move_blocking(50, -10, 500)
     elif action == 'right':
-        rob.move(-10, 50, 500)
+        rob.move_blocking(-10, 50, 500)
        
     rob.sleep(0.1)
 
@@ -183,3 +184,54 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
 
     # Save the final Q-table
     save_q_table(q_table)
+
+def play_robot_action(rob, action=None):
+
+    print(f"Simulating action: {action}")
+    if action == 'forward':
+        rob.move_blocking(50, 50, 300)
+    elif action == 'left': #action left wheel
+        rob.move_blocking(60, -30, 300)
+    elif action == 'right':
+        rob.move_blocking(-30, 60, 300)
+       
+    rob.sleep(0.1)
+
+    ir_values = rob.read_irs()
+    selected_values = [ir_values[7], ir_values[4], ir_values[5]/2.5]
+    selected_values = [round(value) for value in selected_values]
+
+    next_state = transform_ir_values(selected_values, thresholds=BIN_THRESHOLDS_HARDWARE)
+
+    return next_state
+
+    # Training function using Q-learning
+def play_q_table(rob, q_table):
+    if isinstance(rob, SimulationRobobo):
+        rob.play_simulation()
+        print("Start simulation")
+
+    # Initialize the episode
+    state = (1,1,1)
+    done = False
+
+    while True:
+        action_index = np.argmax(q_table[state])
+
+        action = ACTIONS[action_index]
+
+        # Take the action and observe the new state and reward
+        new_state = play_robot_action(rob, action)
+        
+        # Transition to the new state
+        state = new_state
+
+        if 3 in state: 
+            done = True
+            if isinstance(rob, SimulationRobobo):
+                rob.stop_simulation()
+
+        if done:
+            break
+
+    print_q_table(q_table)
