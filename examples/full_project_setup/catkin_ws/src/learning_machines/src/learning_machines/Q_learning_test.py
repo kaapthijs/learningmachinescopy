@@ -37,27 +37,27 @@ FORWARD_REWARD = 11
 HIT_PENALTY = -50
 
 # Functions for loading and saving q-table
-def load_q_table(file_path='q_table.pkl'):
-    with open(str(RESULT_DIR / file_path), 'rb') as f:
+def load_q_table(q_table_path):
+    with open(str(RESULT_DIR / q_table_path), 'rb') as f:
         return pickle.load(f)
     
-def save_q_table(q_table, file_path='q_table.pkl'):
-    with open(str(RESULT_DIR / file_path), 'wb') as f:
+def save_q_table(q_table, q_table_path):
+    with open(str(RESULT_DIR / q_table_path), 'wb') as f:
         pickle.dump(q_table, f)
 
 
 # Initialize Q-table
-def initialize_q_table(file_path='q_table.pkl', num_bins=NUM_BINS, num_sensors=NUM_SENSORS, num_actions=NUM_ACTIONS):
+def initialize_q_table(q_table_path, num_bins=NUM_BINS, num_sensors=NUM_SENSORS, num_actions=NUM_ACTIONS):
     """Load the Q-table from a file if it exists; otherwise, initialize a new Q-table."""
-    if os.path.exists(file_path):
-        with open(file_path, 'rb') as f:
+    if os.path.exists(q_table_path):
+        with open(q_table_path, 'rb') as f:
             q_table = pickle.load(f)
     else:
         q_table = {}
         for state in itertools.product(range(num_bins), repeat=num_sensors):
             q_table[state] = [0.0 for _ in range(num_actions)]
             
-        save_q_table(q_table, file_path)  # Save the new Q-table for the first time
+        save_q_table(q_table, q_table_path)  # Save the new Q-table for the first time
     
     return q_table
 
@@ -133,7 +133,24 @@ def simulate_robot_action(rob, action=None):
     return next_state, reward, done
 
 # Training function using Q-learning
-def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+    # create .csv header
+    data_header = ['run_name',
+                    'NUM_BINS',
+                    'BIN_THRESHOLDS',
+                    'episode',
+                    'step',
+                    'reward',
+                    'action',
+                    'selected_values',
+                    'state']
+            
+    with open(str(RESULT_DIR / results_path),'a') as f:
+        for item in data_header:
+            f.write(str(item))
+            f.write(';')
+        f.write('\n')
+
     for episode in range(num_episodes):
         if isinstance(rob, SimulationRobobo):
             rob.play_simulation()
@@ -162,6 +179,27 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
             current_q = q_table[state][action_index]
             q_table[state][action_index] = current_q + alpha * (reward + gamma * max_future_q - current_q)
 
+            # Store result in csv.
+            ir_values = rob.read_irs()
+            selected_values = [ir_values[7], ir_values[4], ir_values[5]]
+            selected_values = [round(value) for value in selected_values]
+
+            data_to_write = [run_name,
+                             NUM_BINS,
+                             BIN_THRESHOLDS,
+                             episode,
+                             step,
+                             reward,
+                             action,
+                             selected_values,
+                             state]
+            
+            with open(str(RESULT_DIR / results_path),'a') as f:
+                for item in data_to_write:
+                    f.write(str(item))
+                    f.write(';')
+                f.write('\n')
+            
             # Transition to the new state
             state = new_state
 
@@ -175,12 +213,12 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
 
         # Save Q-table periodically
         if episode % 10 == 0:
-            save_q_table(q_table)
+            save_q_table(q_table, q_table_path)
     
     print_q_table(q_table)
 
     # Save the final Q-table
-    save_q_table(q_table)
+    save_q_table(q_table, q_table_path)
 
 def play_robot_action(rob, action=None):
 
@@ -204,6 +242,7 @@ def play_robot_action(rob, action=None):
 
     # Training function using Q-learning
 def play_q_table(rob, q_table):
+
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
         print("Start simulation")
@@ -216,6 +255,12 @@ def play_q_table(rob, q_table):
         action_index = np.argmax(q_table[state])
 
         action = ACTIONS[action_index]
+
+        ir_values = rob.read_irs()
+        selected_values = [ir_values[7], ir_values[4], ir_values[5]/2.5]
+        selected_values = [round(value) for value in selected_values]
+
+        # write results
 
         # Take the action and observe the new state and reward
         new_state = play_robot_action(rob, action)

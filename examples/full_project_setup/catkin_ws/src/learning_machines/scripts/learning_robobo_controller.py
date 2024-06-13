@@ -18,23 +18,23 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
-    #move_robot(rob)
-    #run_all_actions(rob)
-    #avoid_object(rob)
+    # SET RESULT NAMES
+    RUN_NAME = "Test_Run_1"
+    q_table_path = RUN_NAME + "_Q_table.pkl"
+    result_path = RUN_NAME + "_Results.csv"
 
-     
     # Load or initialize the Q-table
-    q_table = initialize_q_table()
+    q_table = initialize_q_table(q_table_path=q_table_path)
 
     # Print the initial Q-table
-    #print("Initial Q-table:")
-    #print_q_table(q_table)
+    print("Initial Q-table:")
+    print_q_table(q_table)
 
     # Train the Q-table
-    #train_q_table(rob, q_table, num_episodes=800)
+    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=2)
     
     # Print the trained Q-table
-    trained_q_table = load_q_table(file_path='fourth_model.pkl')
+    trained_q_table = load_q_table(q_table_path=q_table_path)
     print("Trained Q-table:")
     print_q_table(trained_q_table, num_entries = 81)
 
