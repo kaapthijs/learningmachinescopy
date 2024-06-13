@@ -23,7 +23,7 @@ from robobo_interface import (
 NUM_SENSORS = 3
 
 # Define the possible actions
-ACTIONS = ['forward', 'left', 'right']
+ACTIONS = ['left', 'forward', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
 # Define number of bins where sensor falls in
@@ -33,6 +33,8 @@ BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define reward point of moving forward
 FORWARD_REWARD = 11
+
+HIT_PENALTY = -50
 
 # Functions for loading and saving q-table
 def load_q_table(file_path='q_table.pkl'):
@@ -99,11 +101,11 @@ def simulate_robot_action(rob, action=None):
 
     print(f"Simulating action: {action}")
     if action == 'forward':
-        rob.move_blocking(50, 50, 1000)
-    elif action == 'left':
-        rob.move_blocking(50, -10, 500)
+        rob.move_blocking(50, 50, 300)
     elif action == 'right':
-        rob.move_blocking(-10, 50, 500)
+        rob.move_blocking(60, -30, 300)
+    elif action == 'left':
+        rob.move_blocking(-30, 60, 300)
        
     rob.sleep(0.1)
 
@@ -115,13 +117,12 @@ def simulate_robot_action(rob, action=None):
 
     # Compute reward of action
     # Check if any of the sensors exceed their respective thresholds
-    #if any((value > threshold1 and idx < 2) or (value > threshold2 and idx < 4) or (value > threshold_rest and idx >= 4) for idx, value in enumerate(selected_values)):
     if any(value==NUM_BINS-1 for value in next_state):    
-        reward = -50  # Penalty for hitting an object
+        reward = HIT_PENALTY  # Penalty for hitting an object
     else:
         reward = 1  # Default reward
 
-    if action == 'forward' and reward != -50:
+    if action == 'forward' and reward != HIT_PENALTY:
         reward += FORWARD_REWARD
     
     # if falls of map, sensors are 0, then stop simulation
@@ -138,10 +139,6 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
             rob.play_simulation()
             print("Start simulation: ", episode)
 
-        # Initialize the episode
-        ir_values = rob.read_irs()
-        selected_values = [5,5,5] # avoid starting with [inf, inf, inf]
-    
         state = (1,1,1)
         done = False
 
@@ -168,7 +165,7 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
             # Transition to the new state
             state = new_state
 
-            if reward == -50 or step >= max_steps: 
+            if reward == HIT_PENALTY or step >= max_steps: 
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
@@ -176,7 +173,7 @@ def train_q_table(rob, q_table, num_episodes=200, max_steps=40, alpha=0.1, gamma
             if done:
                 break
 
-        # Optionally save Q-table periodically
+        # Save Q-table periodically
         if episode % 10 == 0:
             save_q_table(q_table)
     
@@ -190,9 +187,9 @@ def play_robot_action(rob, action=None):
     print(f"Simulating action: {action}")
     if action == 'forward':
         rob.move_blocking(50, 50, 300)
-    elif action == 'left': #action left wheel
+    elif action == 'right': 
         rob.move_blocking(60, -30, 300)
-    elif action == 'right':
+    elif action == 'left':
         rob.move_blocking(-30, 60, 300)
        
     rob.sleep(0.1)
@@ -226,7 +223,7 @@ def play_q_table(rob, q_table):
         # Transition to the new state
         state = new_state
 
-        if 3 in state: 
+        if NUM_BINS-1 in state: 
             done = True
             if isinstance(rob, SimulationRobobo):
                 rob.stop_simulation()
