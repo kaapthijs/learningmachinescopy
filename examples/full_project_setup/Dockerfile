@@ -17,6 +17,9 @@ RUN apt-get update -y && apt-get install ffmpeg libsm6 libxext6 ros-noetic-openc
 COPY ./requirements.txt /requirements.txt
 RUN python3 -m pip install -r /requirements.txt && rm /requirements.txt
 
+# Install packages
+
+
 # This cd's into a new `catkin_ws` directory anyone starting the shell will end up in.
 WORKDIR /root/catkin_ws
 
