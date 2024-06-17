@@ -1,6 +1,8 @@
 import cv2
 
 from data_files import FIGRURES_DIR
+from data_files import RESULT_DIR
+
 from robobo_interface import (
     IRobobo,
     Emotion,
@@ -59,20 +61,55 @@ def test_hardware(rob: HardwareRobobo):
     print("Phone battery level: ", rob.read_phone_battery())
     print("Robot battery level: ", rob.read_robot_battery())
 
+def test_phone_moving(rob: IRobobo):
+    # print current position
+    print(f"Camera starts in pan: {rob.read_phone_pan()}")
+    print(f"Camera starts in tilt: {rob.read_phone_tilt()}")
+
+    # test moving pan and tilt
+    ## pan(pan:[11-343], speed:[0-100])
+    ## tilt(tilt:[26-109], speed:[0-100])
+    
+    rob.set_phone_pan_blocking(11, 20)
+    print("Phone pan after move to 11: ", rob.read_phone_pan())
+    rob.set_phone_pan_blocking(340, 20)
+    print("Phone pan after move to 340: ", rob.read_phone_pan())
+    
+    rob.set_phone_tilt_blocking(100, 20)
+    print("Phone tilt after move to 100: ", rob.read_phone_tilt())
+    rob.set_phone_tilt_blocking(28, 20)
+    print("Phone tilt after move to 28: ", rob.read_phone_tilt())
+
+def test_take_picture(rob: IRobobo):
+    # In CoppeliaSim images are left to right (x-axis), and bottom to top (y-axis)
+        # (consistent with the axes of vision sensors, pointing Z outwards, Y up)
+        # and color format is RGB triplets, whereas OpenCV uses BGR:
+
+    image = rob.get_image_front()
+    print(image)
+    cv2.imwrite(str(FIGRURES_DIR / "test_green_block.png"), image)
 
 def run_all_actions(rob: IRobobo):
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
-    test_emotions(rob)
-    test_sensors(rob)
-    test_move_and_wheel_reset(rob)
-    if isinstance(rob, SimulationRobobo):
-        test_sim(rob)
+    #test_emotions(rob)
+    
+    # test taking picture and store
+    rob.set_phone_tilt_blocking(109, 20)
+    rob.set_phone_pan_blocking(11, 20)
+    test_take_picture(rob)
 
-    if isinstance(rob, HardwareRobobo):
-        test_hardware(rob)
+    #test_sensors(rob)
+    #test_phone_movement(rob)
+    
+    #test_move_and_wheel_reset(rob)
+    #if isinstance(rob, SimulationRobobo):
+    #    test_sim(rob)
 
-    test_phone_movement(rob)
+    #if isinstance(rob, HardwareRobobo):
+    #    test_hardware(rob)
+
+    
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()

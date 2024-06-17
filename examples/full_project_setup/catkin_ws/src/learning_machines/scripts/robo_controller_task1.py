@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import run_all_actions
+from learning_machines import train_q_table, initialize_q_table, print_q_table, load_q_table, play_q_table
 
 if __name__ == "__main__":
     # You can do better argument parsing than this!
@@ -19,8 +19,23 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
     # SET RESULT NAMES
-    RUN_NAME = "TASK_2_Test"
+    RUN_NAME = "Run_6_Bins"
+    q_table_path = RUN_NAME + "_Q_table.pkl"
     result_path = RUN_NAME + "_Results.csv"
 
     # Load or initialize the Q-table
-    run_all_actions(rob)
+    q_table = initialize_q_table(q_table_path=q_table_path)
+
+    # Print the initial Q-table
+    print("Initial Q-table:")
+    print_q_table(q_table)
+
+    # Train the Q-table
+    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=200)
+    
+    # Print the trained Q-table
+    trained_q_table = load_q_table(q_table_path=q_table_path)
+    print("Trained Q-table:")
+    print_q_table(trained_q_table, num_entries = 81)
+
+    #play_q_table(rob, trained_q_table)
