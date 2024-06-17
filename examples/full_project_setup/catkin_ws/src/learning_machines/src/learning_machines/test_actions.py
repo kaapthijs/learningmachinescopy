@@ -86,9 +86,17 @@ def test_take_picture(rob: IRobobo):
         # and color format is RGB triplets, whereas OpenCV uses BGR:
 
     image = rob.get_image_front()
-    print(image)
-    cv2.imwrite(str(FIGRURES_DIR / "test_green_block.png"), image)
+    cv2.imwrite(str(FIGRURES_DIR / "test_green_block_rgb.png"), image)
 
+    print("Image shape:", image.shape)
+    print(image)
+
+    # Print the pixel values at the four corners
+    print("Top-left corner pixel value:", image[0, 0])
+    print("Top-right corner pixel value:", image[0, -1])
+    print("Bottom-left corner pixel value:", image[-1, 0])
+    print("Bottom-right corner pixel value:", image[-1, -1])
+    
 def run_all_actions(rob: IRobobo):
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
