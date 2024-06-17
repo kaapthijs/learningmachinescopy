@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import run_all_actions
+from learning_machines import take_test_picture
 
 if __name__ == "__main__":
     # You can do better argument parsing than this!
@@ -23,4 +23,4 @@ if __name__ == "__main__":
     result_path = RUN_NAME + "_Results.csv"
 
     # Load or initialize the Q-table
-    run_all_actions(rob)
+    take_test_picture(rob)

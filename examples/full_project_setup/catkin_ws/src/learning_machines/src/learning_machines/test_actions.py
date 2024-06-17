@@ -81,9 +81,10 @@ def test_phone_moving(rob: IRobobo):
     print("Phone tilt after move to 28: ", rob.read_phone_tilt())
 
 def test_take_picture(rob: IRobobo):
-    # In CoppeliaSim images are left to right (x-axis), and bottom to top (y-axis)
-        # (consistent with the axes of vision sensors, pointing Z outwards, Y up)
-        # and color format is RGB triplets, whereas OpenCV uses BGR:
+    if isinstance(rob, SimulationRobobo):
+        rob.play_simulation()
+    rob.set_phone_tilt_blocking(109, 20)
+    rob.set_phone_pan_blocking(11, 20)
 
     image = rob.get_image_front()
     cv2.imwrite(str(FIGRURES_DIR / "test_green_block_rgb.png"), image)
@@ -96,28 +97,30 @@ def test_take_picture(rob: IRobobo):
     print("Top-right corner pixel value:", image[0, -1])
     print("Bottom-left corner pixel value:", image[-1, 0])
     print("Bottom-right corner pixel value:", image[-1, -1])
+
+
+    if isinstance(rob, SimulationRobobo):
+        rob.stop_simulation()
     
 def run_all_actions(rob: IRobobo):
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
-    #test_emotions(rob)
+    test_emotions(rob)
     
     # test taking picture and store
     rob.set_phone_tilt_blocking(109, 20)
     rob.set_phone_pan_blocking(11, 20)
     test_take_picture(rob)
 
-    #test_sensors(rob)
-    #test_phone_movement(rob)
+    test_sensors(rob)
+    test_phone_movement(rob)
     
-    #test_move_and_wheel_reset(rob)
-    #if isinstance(rob, SimulationRobobo):
-    #    test_sim(rob)
+    test_move_and_wheel_reset(rob)
+    if isinstance(rob, SimulationRobobo):
+        test_sim(rob)
 
-    #if isinstance(rob, HardwareRobobo):
-    #    test_hardware(rob)
-
-    
+    if isinstance(rob, HardwareRobobo):
+        test_hardware(rob)
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
