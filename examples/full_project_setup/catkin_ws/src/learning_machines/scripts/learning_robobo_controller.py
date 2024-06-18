@@ -28,8 +28,8 @@ if __name__ == "__main__":
     q_table = initialize_q_table(q_table_path=q_table_path)
 
     # Print the initial Q-table
-    #print("Initial Q-table:")
-    #print_q_table(q_table)
+    print("Initial Q-table:")
+    print_q_table(q_table, num_entries=30)
 
     # Train the Q-table
     train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=1)

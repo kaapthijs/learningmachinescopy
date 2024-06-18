@@ -27,13 +27,13 @@ ACTIONS = ['left', 'forward', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
 # Define number of InfraRed bins where sensor falls in
-IR_BINS = 6    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,7,10,15,25]
+IR_BINS = 4    # sensor value could be 0,1,2,3
+BIN_THRESHOLDS = [4,10,25]
 BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define Greenness Constans
 GREEN_BINS = 3 # 0,1,2
-GREEN_THRESHOLDS = [20,60]
+GREEN_THRESHOLDS = [60,80]
 GREEN_THRESHOLDS_HARDWARE = [5,10,15]
 
 GREEN_LOWER = np.array([0, 160, 0])
@@ -41,6 +41,9 @@ GREEN_HIGHER = np.array([140, 255, 140])
 
 GREEN_LOWER_HARDWARE = np.array([0, 160, 0])
 GREEN_HIGHER_HARDWARE = np.array([140, 255, 140])
+
+GREEN_DIRECTION_BINS = 5
+GREEN_DIRECTION_THRESHOLDS = [0,1,2,3,4]
 
 # Define rewards of moving
 FORWARD_REWARD = 11
@@ -53,10 +56,10 @@ FORWARD_SPEED_RIGHT = 50
 FORWARD_DURATION = 300
 
 RIGHT_SPEED_LEFT = 60
-RIGHT_SPEED_RIGHT = -30
+RIGHT_SPEED_RIGHT = -60
 RIGHT_DURATION = 300
 
-LEFT_SPEED_LEFT = -30
+LEFT_SPEED_LEFT = -60
 LEFT_SPEED_RIGHT = 60
 LEFT_DURATION = 300
 
@@ -75,16 +78,15 @@ def save_q_table(q_table, q_table_path):
     with open(str(RESULT_DIR / q_table_path), 'wb') as f:
         pickle.dump(q_table, f)
 
-
 # Initialize Q-table
-def initialize_q_table(q_table_path, num_bins=IR_BINS, num_sensors=NUM_SENSORS, num_actions=NUM_ACTIONS):
+def initialize_q_table(q_table_path, num_ir_bins=IR_BINS, num_green_bins=GREEN_BINS, num_direction_bins=GREEN_DIRECTION_BINS, num_actions=NUM_ACTIONS):
     """Load the Q-table from a file if it exists; otherwise, initialize a new Q-table."""
     if os.path.exists(q_table_path):
         with open(q_table_path, 'rb') as f:
             q_table = pickle.load(f)
     else:
         q_table = {}
-        for state in itertools.product(range(num_bins), repeat=num_sensors):
+        for state in itertools.product(range(1,num_ir_bins), range(num_green_bins), range(num_direction_bins)):
             q_table[state] = [0.0 for _ in range(num_actions)]
             
         save_q_table(q_table, q_table_path)  # Save the new Q-table for the first time
@@ -118,17 +120,7 @@ def get_action(q_table, state, epsilon=0.0):
     
     return ACTIONS[action_index], action_index
 
-def ir_values_to_bins(values, thresholds=BIN_THRESHOLDS) -> tuple:
-    """
-    Transforms input values in list to binned values in a tuple based on given thresholds.
-    
-    Parameters:
-    values (list): A list of numerical values to be binned.
-    thresholds (list): A list of thresholds defining the bins.
-    
-    Returns:
-    tuple: A tuple containing binned values.
-    """
+def ir_values_to_bins(values, thresholds=BIN_THRESHOLDS):
     print(f"New IR-Values are : {values}")
     state = []
     for value in values:
@@ -144,12 +136,12 @@ def ir_values_to_bins(values, thresholds=BIN_THRESHOLDS) -> tuple:
     print(f"Binned to state: {state}")
     return tuple(state)
 
-# Function that transforms greenness value to bin value
-def greenness_value_to_bin(value, thresholds=GREEN_THRESHOLDS) -> tuple:
+# Function that transforms value to bin value
+def value_to_bin(value, thresholds):
     for i, threshold in enumerate(thresholds):
         if value < threshold:
-            return (i,)
-    return (len(thresholds),)
+            return i
+    return len(thresholds)
 
 # Function that creates header for csv in directory
 def create_csv_with_header(header_values, dir_str):
@@ -179,7 +171,7 @@ def get_IR_values(rob) -> list:
     center_IR = ir_values[4]
     right_right_IR = ir_values[5]
 
-    selected_values = [left_left_IR, center_IR, right_right_IR]
+    selected_values = [center_IR]
 
     return [round(value) for value in selected_values]
 
@@ -193,29 +185,6 @@ def move_robot(rob, action):
         rob.move_blocking(LEFT_SPEED_LEFT, LEFT_SPEED_RIGHT, LEFT_DURATION)
        
     rob.sleep(0.1)  # block for _ seconds
-
-# Function that takes the action and calculates reward
-def simulate_robot_action(rob, action=None):
-
-    # move robot and observe new state
-    next_state = play_robot_action(rob, action)
-
-    # Compute reward of action
-    # Check if any of the sensors collided
-    if COLLISION_STATE in next_state:
-        reward = HIT_PENALTY
-    else:
-        reward = 1  # Default reward
-
-    if action == 'forward' and reward != HIT_PENALTY:
-        reward += FORWARD_REWARD
-    
-    # if falls of map, sensors are 0, then stop simulation
-    if 0 in next_state:
-        done = True
-    else: done = False
-
-    return next_state, reward, done
 
 # Function that returns image for state setting
 def get_state_img(rob: IRobobo, dir_str):
@@ -245,14 +214,68 @@ def calculate_img_greenness(image) -> int:
 
     return int(greenness_percentage)
 
+def img_greenness_direction(image) -> int:
+    # Filter green color
+    mask_green = cv2.inRange(image, GREEN_LOWER, GREEN_HIGHER)
+
+    # Split the mask into five vertical sections
+    height, width = mask_green.shape
+    section_width = width // 5
+
+    sections = [
+        mask_green[:, :section_width],
+        mask_green[:, section_width:2*section_width],
+        mask_green[:, 2*section_width:3*section_width],
+        mask_green[:, 3*section_width:4*section_width],
+        mask_green[:, 4*section_width:]
+    ]
+
+    # Count the number of green pixels in each section
+    green_pixel_counts = [np.count_nonzero(section) for section in sections]
+
+    # Determine which section has the most green pixels
+    max_index = np.argmax(green_pixel_counts)
+    green_section = [0,1,2,3,4]
+
+    return green_section[max_index]
+
 # Functiont that retrieves greenness and computes greenness bin
 def get_state_greenness(image):
     # get greenness value %
     greenness = calculate_img_greenness(image)
+    green_direction = img_greenness_direction(image)
+
     print(f"The % of greenness is {greenness}")
+    print(f"The greennes direction is {green_direction}")
     
-    # transform greenness value into bin
-    return greenness_value_to_bin(greenness)
+    # transform greenness values into bin
+    greenness = value_to_bin(greenness, thresholds= GREEN_THRESHOLDS)
+
+    return greenness, green_direction
+
+
+# Function that takes the action and calculates reward
+def simulate_robot_action(rob, action=None):
+
+    # move robot and observe new state
+    next_state = play_robot_action(rob, action)
+
+    # Compute reward of action
+    # Check if any of the sensors collided
+    if COLLISION_STATE in next_state:
+        reward = HIT_PENALTY
+    else:
+        reward = 1  # Default reward
+
+    if action == 'forward' and reward != HIT_PENALTY:
+        reward += FORWARD_REWARD
+    
+    # if falls of map, sensors are 0, then stop simulation
+    if 0 in next_state:
+        done = True
+    else: done = False
+
+    return next_state, reward, done
 
 
 # Training function using Q-learning
@@ -283,11 +306,10 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
         rob.sleep(0.5)
 
         # Build up state components
-        state_IR = (1,1,1)
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
-        state_greenness = get_state_greenness(state_img)
+        state_greenness, greenness_direction = get_state_greenness(state_img)
 
-        state = state_IR + state_greenness
+        state = (1,state_greenness, greenness_direction)
 
         print(f"State became {state}")
         """
