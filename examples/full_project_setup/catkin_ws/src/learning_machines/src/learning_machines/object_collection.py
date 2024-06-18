@@ -28,40 +28,43 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of InfraRed bins where sensor falls in
 IR_BINS = 4    # sensor value could be 0,1,2,3
-BIN_THRESHOLDS = [4,10,25]
-BIN_THRESHOLDS_HARDWARE = [-1,15,100]
+IR_BIN_THRESHOLDS = [4,18,25]
+IR_BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define Greenness Constans
-GREEN_BINS = 3 # 0,1,2
-GREEN_THRESHOLDS = [60,80]
-GREEN_THRESHOLDS_HARDWARE = [5,10,15]
+GREEN_BINS = 5 # 0,1,2
+GREEN_BIN_THRESHOLDS = [20,30, 40,60]
+GREEN_BIN_THRESHOLDS_HARDWARE = [10,15]
 
-GREEN_LOWER = np.array([0, 160, 0])
-GREEN_HIGHER = np.array([140, 255, 140])
+GREEN_LOWER_COLOR = np.array([0, 160, 0])
+GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 
-GREEN_LOWER_HARDWARE = np.array([0, 160, 0])
-GREEN_HIGHER_HARDWARE = np.array([140, 255, 140])
+GREEN_LOWER_COLOR_HARDWARE = np.array([0, 160, 0])
+GREEN_HIGHER_COLOR_HARDWARE = np.array([140, 255, 140])
 
 GREEN_DIRECTION_BINS = 5
 GREEN_DIRECTION_THRESHOLDS = [0,1,2,3,4]
 
 # Define rewards of moving
-FORWARD_REWARD = 11
 HIT_PENALTY = -50
 COLLISION_STATE = IR_BINS-1
+FOOD_HIT_STATE = GREEN_BINS-1
+FOOD_REWARD = 30
+GREEN_REWARD = 10
+FORWARD_REWARD = 3
 
 # Define global constants for movement settings
 FORWARD_SPEED_LEFT = 50
 FORWARD_SPEED_RIGHT = 50
 FORWARD_DURATION = 300
 
-RIGHT_SPEED_LEFT = 60
-RIGHT_SPEED_RIGHT = -60
-RIGHT_DURATION = 300
+RIGHT_SPEED_LEFT = 40
+RIGHT_SPEED_RIGHT = -40
+RIGHT_DURATION = 100
 
-LEFT_SPEED_LEFT = -60
-LEFT_SPEED_RIGHT = 60
-LEFT_DURATION = 300
+LEFT_SPEED_LEFT = -40
+LEFT_SPEED_RIGHT = 40
+LEFT_DURATION = 100
 
 # Define global variables for the image dimensions and clipping
 IMAGE_HEIGHT = 512
@@ -110,17 +113,7 @@ def write_csv(data_values, dir_str):
                     f.write(';')
                 f.write('\n')
 
-# Function that retrieves action from q_table
-# if epsilon is given, retrieve with creativity, else retrive argmax
-def get_action(q_table, state, epsilon=0.0):
-    if epsilon > 0 and random.uniform(0, 1) < epsilon:
-        action_index = random.randint(0, NUM_ACTIONS - 1)
-    else:
-        action_index = np.argmax(q_table[state])
-    
-    return ACTIONS[action_index], action_index
-
-def ir_values_to_bins(values, thresholds=BIN_THRESHOLDS):
+def ir_values_to_bins(values, thresholds=IR_BIN_THRESHOLDS):
     print(f"New IR-Values are : {values}")
     state = []
     for value in values:
@@ -151,29 +144,15 @@ def create_csv_with_header(header_values, dir_str):
             f.write(';')
         f.write('\n')
 
-# Function that moves robot and returns new state
-def play_robot_action(rob, action=None):
-    # move robot
-    print(f"Simulating action: {action}")
-    move_robot(rob, action)
-
-    # get new IR values and state
-    ir_values = get_IR_values(rob)
-    next_state = ir_values_to_bins(ir_values, thresholds=BIN_THRESHOLDS_HARDWARE)
-
-    return next_state
-
 # Function that retrieves IR-sensor values from robot
 def get_IR_values(rob) -> list:
     ir_values = rob.read_irs()
 
-    left_left_IR = ir_values[7]
+    #left_left_IR = ir_values[7]
     center_IR = ir_values[4]
-    right_right_IR = ir_values[5]
+    #right_right_IR = ir_values[5]
 
-    selected_values = [center_IR]
-
-    return [round(value) for value in selected_values]
+    return round(center_IR)
 
 # Funciton that moves robot
 def move_robot(rob, action):
@@ -195,16 +174,12 @@ def get_state_img(rob: IRobobo, dir_str):
     clipped_image = image[CLIP_HEIGHT:, :]
     cv2.imwrite(dir_str, clipped_image) # store image for testing reasons
 
-    # for test move to:
-    if isinstance(rob, SimulationRobobo):
-            rob.stop_simulation()
-
     return clipped_image
 
 # Function that calculates 'greenness' in image
 def calculate_img_greenness(image) -> int:
     # Filter green color
-    mask_green = cv2.inRange(image, GREEN_LOWER, GREEN_HIGHER)
+    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
     cv2.imwrite(str(FIGRURES_DIR / "green_filter_test.png"), mask_green)
 
     # Calculate percentage 'green' pixels
@@ -216,7 +191,7 @@ def calculate_img_greenness(image) -> int:
 
 def img_greenness_direction(image) -> int:
     # Filter green color
-    mask_green = cv2.inRange(image, GREEN_LOWER, GREEN_HIGHER)
+    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
 
     # Split the mask into five vertical sections
     height, width = mask_green.shape
@@ -245,13 +220,40 @@ def get_state_greenness(image):
     greenness = calculate_img_greenness(image)
     green_direction = img_greenness_direction(image)
 
-    print(f"The % of greenness is {greenness}")
-    print(f"The greennes direction is {green_direction}")
+    print(f"The % of greenness is {greenness}, in direction {green_direction}")
     
     # transform greenness values into bin
-    greenness = value_to_bin(greenness, thresholds= GREEN_THRESHOLDS)
+    greenness = value_to_bin(greenness, thresholds= GREEN_BIN_THRESHOLDS)
 
     return greenness, green_direction
+
+
+# Function that gets state
+def get_state(rob):
+    # Build up state
+    state_ir = value_to_bin(get_IR_values(rob), thresholds=IR_BIN_THRESHOLDS)
+    state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
+    state_greenness, greenness_direction = get_state_greenness(state_img)
+
+    return (state_ir,state_greenness, greenness_direction)
+
+# Function that retrieves action from q_table
+# if epsilon is given, retrieve with creativity, else retrive argmax
+def get_action(q_table, state, epsilon=0.0):
+    if epsilon > 0 and random.uniform(0, 1) < epsilon:
+        action_index = random.randint(0, NUM_ACTIONS - 1)
+    else:
+        action_index = np.argmax(q_table[state])
+    
+    return ACTIONS[action_index], action_index
+
+# Function that moves robot and returns new state
+def play_robot_action(rob, action=None):
+    # move robot
+    move_robot(rob, action)
+
+    #return new state
+    return get_state(rob)
 
 
 # Function that takes the action and calculates reward
@@ -260,18 +262,19 @@ def simulate_robot_action(rob, action=None):
     # move robot and observe new state
     next_state = play_robot_action(rob, action)
 
-    # Compute reward of action
-    # Check if any of the sensors collided
-    if COLLISION_STATE in next_state:
+    # Compute reward of action, state:(IR_Distance, %Greenness, Dir.Greenness)
+    if next_state[0]==COLLISION_STATE and next_state[1]==FOOD_HIT_STATE:   # Check if collected food: Close distance AND Green
+        reward = FOOD_REWARD
+    elif next_state[0]==COLLISION_STATE and next_state[1]==0:  # Check if collision: Close distance No Green
         reward = HIT_PENALTY
     else:
         reward = 1  # Default reward
 
-    if action == 'forward' and reward != HIT_PENALTY:
+    if action == 'forward':
         reward += FORWARD_REWARD
     
     # if falls of map, sensors are 0, then stop simulation
-    if 0 in next_state:
+    if next_state[0] == 0:
         done = True
     else: done = False
 
@@ -281,10 +284,9 @@ def simulate_robot_action(rob, action=None):
 # Training function using Q-learning
 def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     # setup data file to store metrics while training
-    """
     create_csv_with_header(header_values=['run_name',
                                           'IR_BINS',
-                                          'BIN_THRESHOLDS',
+                                          'IR_BIN_THRESHOLDS',
                                           'episode',
                                           'step',
                                           'reward',
@@ -292,27 +294,21 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
                                           'selected_values',
                                           'state'], 
                             dir_str= str(RESULT_DIR / results_path))
-    """
+
     for episode in range(num_episodes):
         if isinstance(rob, SimulationRobobo):
             rob.play_simulation()
-            print("Start simulation: ", episode)
+            print("------ Start simulation: ", episode)
+            print("\n")
 
         # Move phone to start view
-        rob.set_phone_tilt_blocking(100, 20)
+        rob.set_phone_tilt_blocking(109, 20)
 
-        # rotate robot to test view
-        rob.move_blocking(-60,60, 1000)
-        rob.sleep(0.5)
-
-        # Build up state components
+        # Build up state
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
         state_greenness, greenness_direction = get_state_greenness(state_img)
 
-        state = (1,state_greenness, greenness_direction)
-
-        print(f"State became {state}")
-        """
+        state = (1,state_greenness, greenness_direction)        
         done = False
 
         for step in range(max_steps):
@@ -323,7 +319,9 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
 
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
-            print(f"Got new reward {reward}")
+            if new_state[1]<state[1]: reward -= GREEN_REWARD
+
+            print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             
             # Update the Q-value in Q-table
             max_future_q = max(q_table[new_state])
@@ -333,7 +331,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             # Store result in csv.
             write_csv(data_values= [run_name,
                                     IR_BINS,
-                                    BIN_THRESHOLDS,
+                                    IR_BIN_THRESHOLDS,
                                     episode,
                                     step,
                                     reward,
@@ -350,6 +348,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
+                print(f"------------------- END EPISODE {episode} --------------------")
 
             if done:
                 break
@@ -358,12 +357,12 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
         if episode % 10 == 0:
             save_q_table(q_table, q_table_path)
     
-    print_q_table(q_table)
+    print_q_table(q_table, num_entries=20)
 
     # Save the final Q-table
-    save_q_table(q_table, q_table_path)"""
+    save_q_table(q_table, q_table_path)
 
-    # Training function using Q-learning
+# Training function using Q-learning
 def play_q_table(rob, q_table):
 
     if isinstance(rob, SimulationRobobo):
