@@ -31,10 +31,16 @@ IR_BINS = 6    # sensor value could be 0,1,2,3
 BIN_THRESHOLDS = [4,7,10,15,25]
 BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
-# Define number of Greenness bins
+# Define Greenness Constans
 GREEN_BINS = 3 # 0,1,2
-GREEN_THRESHOLDS = [5,10,15]
+GREEN_THRESHOLDS = [20,60]
 GREEN_THRESHOLDS_HARDWARE = [5,10,15]
+
+GREEN_LOWER = np.array([0, 160, 0])
+GREEN_HIGHER = np.array([140, 255, 140])
+
+GREEN_LOWER_HARDWARE = np.array([0, 160, 0])
+GREEN_HIGHER_HARDWARE = np.array([140, 255, 140])
 
 # Define rewards of moving
 FORWARD_REWARD = 11
@@ -53,6 +59,12 @@ RIGHT_DURATION = 300
 LEFT_SPEED_LEFT = -30
 LEFT_SPEED_RIGHT = 60
 LEFT_DURATION = 300
+
+# Define global variables for the image dimensions and clipping
+IMAGE_HEIGHT = 512
+IMAGE_WIDTH = 512
+IMAGE_DEPTH = 3 #RGB
+CLIP_HEIGHT = IMAGE_HEIGHT // 2
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -132,6 +144,13 @@ def ir_values_to_bins(values, thresholds=BIN_THRESHOLDS) -> tuple:
     print(f"Binned to state: {state}")
     return tuple(state)
 
+# Function that transforms greenness value to bin value
+def greenness_value_to_bin(value, thresholds=GREEN_THRESHOLDS) -> tuple:
+    for i, threshold in enumerate(thresholds):
+        if value < threshold:
+            return (i,)
+    return (len(thresholds),)
+
 # Function that creates header for csv in directory
 def create_csv_with_header(header_values, dir_str):
     with open(dir_str,'a') as f:
@@ -140,7 +159,7 @@ def create_csv_with_header(header_values, dir_str):
             f.write(';')
         f.write('\n')
 
-# Funciton that moves robot and returns new state
+# Function that moves robot and returns new state
 def play_robot_action(rob, action=None):
     # move robot
     print(f"Simulating action: {action}")
@@ -198,11 +217,48 @@ def simulate_robot_action(rob, action=None):
 
     return next_state, reward, done
 
+# Function that returns image for state setting
+def get_state_img(rob: IRobobo, dir_str):
+    # retrieve current view of camera
+    image = rob.get_image_front()
+
+    # clip the upper part of the image
+    clipped_image = image[CLIP_HEIGHT:, :]
+    cv2.imwrite(dir_str, clipped_image) # store image for testing reasons
+
+    # for test move to:
+    if isinstance(rob, SimulationRobobo):
+            rob.stop_simulation()
+
+    return clipped_image
+
+# Function that calculates 'greenness' in image
+def calculate_img_greenness(image) -> int:
+    # Filter green color
+    mask_green = cv2.inRange(image, GREEN_LOWER, GREEN_HIGHER)
+    cv2.imwrite(str(FIGRURES_DIR / "green_filter_test.png"), mask_green)
+
+    # Calculate percentage 'green' pixels
+    green_pixel_count = np.count_nonzero(mask_green)
+    total_pixel_count = mask_green.size
+    greenness_percentage = (green_pixel_count / total_pixel_count) * 100
+
+    return int(greenness_percentage)
+
+# Functiont that retrieves greenness and computes greenness bin
+def get_state_greenness(image):
+    # get greenness value %
+    greenness = calculate_img_greenness(image)
+    print(f"The % of greenness is {greenness}")
+    
+    # transform greenness value into bin
+    return greenness_value_to_bin(greenness)
 
 
 # Training function using Q-learning
 def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     # setup data file to store metrics while training
+    """
     create_csv_with_header(header_values=['run_name',
                                           'IR_BINS',
                                           'BIN_THRESHOLDS',
@@ -212,14 +268,29 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
                                           'action',
                                           'selected_values',
                                           'state'], 
-                            directory= str(RESULT_DIR / results_path))
-    
+                            dir_str= str(RESULT_DIR / results_path))
+    """
     for episode in range(num_episodes):
         if isinstance(rob, SimulationRobobo):
             rob.play_simulation()
             print("Start simulation: ", episode)
 
-        state = (1,1,1)
+        # Move phone to start view
+        rob.set_phone_tilt_blocking(100, 20)
+
+        # rotate robot to test view
+        rob.move_blocking(-60,60, 1000)
+        rob.sleep(0.5)
+
+        # Build up state components
+        state_IR = (1,1,1)
+        state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
+        state_greenness = get_state_greenness(state_img)
+
+        state = state_IR + state_greenness
+
+        print(f"State became {state}")
+        """
         done = False
 
         for step in range(max_steps):
@@ -268,7 +339,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
     print_q_table(q_table)
 
     # Save the final Q-table
-    save_q_table(q_table, q_table_path)
+    save_q_table(q_table, q_table_path)"""
 
     # Training function using Q-learning
 def play_q_table(rob, q_table):
