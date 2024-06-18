@@ -49,7 +49,7 @@ GREEN_DIRECTION_THRESHOLDS = [0,1,2,3,4]
 HIT_PENALTY = -50
 COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
-FOOD_REWARD = 30
+FOOD_REWARD = 50
 GREEN_REWARD = 10
 FORWARD_REWARD = 3
 
@@ -320,6 +320,9 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
             if new_state[1]<state[1]: reward -= GREEN_REWARD
+            if new_state== (1,0,0) and state==(3,3,2): reward += FOOD_REWARD
+            if new_state== (1,0,0) and state==(3,3,3): reward += FOOD_REWARD
+            if new_state== (1,0,0) and state==(3,3,1): reward += FOOD_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             
@@ -357,7 +360,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
         if episode % 10 == 0:
             save_q_table(q_table, q_table_path)
     
-    print_q_table(q_table, num_entries=20)
+    print_q_table(q_table, num_entries=50)
 
     # Save the final Q-table
     save_q_table(q_table, q_table_path)
