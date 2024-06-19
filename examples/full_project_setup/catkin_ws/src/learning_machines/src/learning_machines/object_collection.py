@@ -28,19 +28,19 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of InfraRed bins where sensor falls in
 IR_BINS = 4    # sensor value could be 0,1,2,3
-IR_BIN_THRESHOLDS = [4,18,25]
-IR_BIN_THRESHOLDS_HARDWARE = [-1,15,100]
+IR_BIN_THRESHOLDS = [4,7,25]
+IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
 
 # Define Greenness Constans
 GREEN_BINS = 4 # 0,1,2,3
-GREEN_BIN_THRESHOLDS = [1, 20, 40]
-GREEN_BIN_THRESHOLDS_HARDWARE = [10,15]
+GREEN_BIN_THRESHOLDS = [1, 15, 40]
+GREEN_BIN_THRESHOLDS_HARDWARE = [5, 20, 40]
 
 GREEN_LOWER_COLOR = np.array([0, 160, 0])
 GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 
-GREEN_LOWER_COLOR_HARDWARE = np.array([0, 160, 0])
-GREEN_HIGHER_COLOR_HARDWARE = np.array([140, 255, 140])
+GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
+GREEN_HIGHER_COLOR_HARDWARE = np.array([85, 237, 85])
 
 GREEN_DIRECTION_BINS = 3
 GREEN_DIRECTIONS = [0,1,2]
@@ -50,7 +50,7 @@ HIT_PENALTY = -50
 COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
 FOOD_REWARD = 50
-GREEN_REWARD = 10
+GREEN_REWARD = 15
 FORWARD_REWARD = 3
 
 # Define global constants for movement settings
@@ -65,6 +65,18 @@ RIGHT_DURATION = 100
 LEFT_SPEED_LEFT = -40
 LEFT_SPEED_RIGHT = 40
 LEFT_DURATION = 100
+
+FORWARD_SPEED_LEFT_HDW = 50
+FORWARD_SPEED_RIGHT_HDW = 50
+FORWARD_DURATION_HDW = 300
+
+RIGHT_SPEED_LEFT_HDW = 60
+RIGHT_SPEED_RIGHT_HDW = -60
+RIGHT_DURATION_HDW = 200
+
+LEFT_SPEED_LEFT_HDW = -60
+LEFT_SPEED_RIGHT_HDW = 60
+LEFT_DURATION_HDW = 200
 
 # Define global variables for the image dimensions and clipping
 IMAGE_HEIGHT = 512
@@ -165,6 +177,17 @@ def move_robot(rob, action):
        
     rob.sleep(0.1)  # block for _ seconds
 
+# Funciton that moves robot
+def move_robot_hardware(rob, action):
+    if action == 'forward':
+        rob.move(FORWARD_SPEED_LEFT_HDW, FORWARD_SPEED_RIGHT_HDW, FORWARD_DURATION_HDW)
+    elif action == 'right':
+        rob.move_blocking(RIGHT_SPEED_LEFT_HDW, RIGHT_SPEED_RIGHT_HDW, RIGHT_DURATION_HDW)
+    elif action == 'left':
+        rob.move_blocking(LEFT_SPEED_LEFT_HDW, LEFT_SPEED_RIGHT_HDW, LEFT_DURATION_HDW)
+       
+    rob.sleep(0.1)  # block for _ seconds
+
 # Function that returns image for state setting
 def get_state_img(rob: IRobobo, dir_str):
     # retrieve current view of camera
@@ -205,11 +228,11 @@ def img_greenness_direction(image) -> int:
     return max_index
 
 # Functiont that retrieves greenness and computes greenness bin
-def get_state_greenness(image):
+def get_state_greenness(image, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
     # get greenness value % from center view
     # Split the mask into vertical sections
     # Filter green color
-    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
+    mask_green = cv2.inRange(image, lower_color, higher_color)
     cv2.imwrite(str(FIGRURES_DIR / "green_filter.png"), mask_green) # store image for testing reasons
     
 
@@ -233,11 +256,11 @@ def get_state_greenness(image):
 
 
 # Function that gets state
-def get_state(rob):
+def get_state(rob, thresholds, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
     # Build up state
-    state_ir = value_to_bin(get_IR_values(rob), thresholds=IR_BIN_THRESHOLDS)
+    state_ir = value_to_bin(get_IR_values(rob), thresholds)
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
-    state_greenness, greenness_direction = get_state_greenness(state_img)
+    state_greenness, greenness_direction = get_state_greenness(state_img, lower_color, higher_color)
 
     return (state_ir,state_greenness, greenness_direction)
 
@@ -252,12 +275,20 @@ def get_action(q_table, state, epsilon=0.0):
     return ACTIONS[action_index], action_index
 
 # Function that moves robot and returns new state
-def play_robot_action(rob, action=None):
+def play_robot_action(rob, action=None, thresholds=IR_BIN_THRESHOLDS):
     # move robot
     move_robot(rob, action)
 
     #return new state
-    return get_state(rob)
+    return get_state(rob, thresholds)
+
+# Function that moves robot and returns new state
+def play_robot_action_hardware(rob, action=None, thresholds=IR_BIN_THRESHOLDS):
+    # move robot
+    move_robot_hardware(rob, action)
+
+    #return new state
+    return get_state(rob, thresholds, GREEN_LOWER_COLOR_HARDWARE, GREEN_HIGHER_COLOR_HARDWARE)
 
 
 # Function that takes the action and calculates reward
@@ -392,20 +423,22 @@ def play_q_table(rob, q_table):
         action, _ = get_action(q_table, state)
 
         # Take the action and observe the new state
-        new_state = play_robot_action(rob, action)
-        
+        new_state = play_robot_action_hardware(rob, action, thresholds=IR_BIN_THRESHOLDS_HARDWARE)
+
+        print(f"Moved from state {state} to {new_state} by going {action}.")
+
         # Transition to the new state
         state = new_state
 
         # Check if robot has collided, then stop simulation
-        if rob.nr_food_collected == 5: 
-            done = True
+        #if rob.nr_food_collected == 5: 
+         #   done = True
 
-            rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
+          #  rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
 
 
-            if isinstance(rob, SimulationRobobo):
-                rob.stop_simulation()
+#            if isinstance(rob, SimulationRobobo):
+ #               rob.stop_simulation()
 
         if done:
             break

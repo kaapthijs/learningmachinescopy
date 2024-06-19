@@ -20,6 +20,7 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
     # SET RESULT NAMES
+    #RUN_NAME = "TASK2_Training_Thijs1"
     RUN_NAME = "TASK2_Test_Training"
     q_table_path = RUN_NAME + "_Q_table.pkl"
     result_path = RUN_NAME + "_Results.csv"
@@ -28,11 +29,12 @@ if __name__ == "__main__":
     q_table = initialize_q_table(q_table_path=q_table_path)
 
     print("Initial Q-table:")
-    #print_q_table(q_table, num_entries=60)
+    print_q_table(q_table, num_entries=60)
 
     # Train the Q-table
-    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=30, epsilon=0.25)
+    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=50, max_steps=100, epsilon=0.30)
 
-    trained_q_table = load_q_table(q_table_path=q_table_path)
+    #trained_q_table = load_q_table(q_table_path=q_table_path)
+    #print_q_table(trained_q_table, num_entries=60)
 
-    #play_q_table(rob,)
+    #play_q_table(rob, trained_q_table)
