@@ -350,8 +350,8 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
 
             # Check collision with object, or maximum steps is reached, then stop simulation
             if step >= max_steps-1:
-                print(f"/n I found {rob.nr_food_collected} food objects!!")
-                rob.talk(f"Hello, I found {rob.nr_food_collected} food objects!!")
+                print(f"/n I found {rob.nr_food_collected()} food objects!!")
+                rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
 
                 done = True
                 if isinstance(rob, SimulationRobobo):
@@ -401,7 +401,7 @@ def play_q_table(rob, q_table):
         if rob.nr_food_collected == 5: 
             done = True
 
-            rob.talk(f"Hello, I found {rob.nr_food_collected} food objects!!")
+            rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
 
 
             if isinstance(rob, SimulationRobobo):
