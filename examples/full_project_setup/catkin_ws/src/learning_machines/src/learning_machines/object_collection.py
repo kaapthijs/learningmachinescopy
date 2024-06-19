@@ -32,8 +32,8 @@ IR_BIN_THRESHOLDS = [4,18,25]
 IR_BIN_THRESHOLDS_HARDWARE = [-1,15,100]
 
 # Define Greenness Constans
-GREEN_BINS = 5 # 0,1,2
-GREEN_BIN_THRESHOLDS = [20,30, 40,60]
+GREEN_BINS = 4 # 0,1,2,3
+GREEN_BIN_THRESHOLDS = [1, 20, 40]
 GREEN_BIN_THRESHOLDS_HARDWARE = [10,15]
 
 GREEN_LOWER_COLOR = np.array([0, 160, 0])
@@ -42,8 +42,8 @@ GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 GREEN_LOWER_COLOR_HARDWARE = np.array([0, 160, 0])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([140, 255, 140])
 
-GREEN_DIRECTION_BINS = 5
-GREEN_DIRECTION_THRESHOLDS = [0,1,2,3,4]
+GREEN_DIRECTION_BINS = 3
+GREEN_DIRECTIONS = [0,1,2]
 
 # Define rewards of moving
 HIT_PENALTY = -50
@@ -98,7 +98,7 @@ def initialize_q_table(q_table_path, num_ir_bins=IR_BINS, num_green_bins=GREEN_B
 
 # Visualize Q-table
 def print_q_table(q_table, num_entries=10):
-    print(f"{'State':<15} | {'Q-values (forward, left, right)':<30}")
+    print(f"{'State':<15} | {'Q-values (left, forward, right)':<30}")
     print("-" * 50)
     for i, (state, q_values) in enumerate(q_table.items()):
         print(f"{str(state):<15} | {q_values}")
@@ -178,31 +178,22 @@ def get_state_img(rob: IRobobo, dir_str):
 
 # Function that calculates 'greenness' in image
 def calculate_img_greenness(image) -> int:
-    # Filter green color
-    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
-    cv2.imwrite(str(FIGRURES_DIR / "green_filter_test.png"), mask_green)
-
     # Calculate percentage 'green' pixels
-    green_pixel_count = np.count_nonzero(mask_green)
-    total_pixel_count = mask_green.size
+    green_pixel_count = np.count_nonzero(image)
+    total_pixel_count = image.size
     greenness_percentage = (green_pixel_count / total_pixel_count) * 100
 
     return int(greenness_percentage)
 
 def img_greenness_direction(image) -> int:
-    # Filter green color
-    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
-
     # Split the mask into five vertical sections
-    height, width = mask_green.shape
-    section_width = width // 5
+    height, width = image.shape
+    section_width = width // GREEN_DIRECTION_BINS
 
     sections = [
-        mask_green[:, :section_width],
-        mask_green[:, section_width:2*section_width],
-        mask_green[:, 2*section_width:3*section_width],
-        mask_green[:, 3*section_width:4*section_width],
-        mask_green[:, 4*section_width:]
+        image[:, :section_width],
+        image[:, section_width:2*section_width],
+        image[:, 2*section_width:]
     ]
 
     # Count the number of green pixels in each section
@@ -210,17 +201,30 @@ def img_greenness_direction(image) -> int:
 
     # Determine which section has the most green pixels
     max_index = np.argmax(green_pixel_counts)
-    green_section = [0,1,2,3,4]
-
-    return green_section[max_index]
+    
+    return max_index
 
 # Functiont that retrieves greenness and computes greenness bin
 def get_state_greenness(image):
-    # get greenness value %
-    greenness = calculate_img_greenness(image)
-    green_direction = img_greenness_direction(image)
+    # get greenness value % from center view
+    # Split the mask into vertical sections
+    # Filter green color
+    mask_green = cv2.inRange(image, GREEN_LOWER_COLOR, GREEN_HIGHER_COLOR)
+    cv2.imwrite(str(FIGRURES_DIR / "green_filter.png"), mask_green) # store image for testing reasons
+    
 
-    print(f"The % of greenness is {greenness}, in direction {green_direction}")
+    # Split the mask into vertical sections
+    height, width = mask_green.shape
+    section_width = width // GREEN_DIRECTION_BINS
+
+    image_centre = mask_green[:, section_width:2*section_width]
+    cv2.imwrite(str(FIGRURES_DIR / "green_filter_center.png"), image_centre) # store image for testing reasons
+    
+    greenness = calculate_img_greenness(image_centre)
+
+    green_direction = img_greenness_direction(mask_green)
+
+    print(f"The % of greenness in centre is {greenness}, in direction {green_direction}")
     
     # transform greenness values into bin
     greenness = value_to_bin(greenness, thresholds= GREEN_BIN_THRESHOLDS)
@@ -261,18 +265,18 @@ def simulate_robot_action(rob, action=None):
 
     # move robot and observe new state
     next_state = play_robot_action(rob, action)
+    reward = 0
 
     # Compute reward of action, state:(IR_Distance, %Greenness, Dir.Greenness)
     if next_state[0]==COLLISION_STATE and next_state[1]==FOOD_HIT_STATE:   # Check if collected food: Close distance AND Green
-        reward = FOOD_REWARD
+        reward += FOOD_REWARD
     elif next_state[0]==COLLISION_STATE and next_state[1]==0:  # Check if collision: Close distance No Green
-        reward = HIT_PENALTY
-    else:
-        reward = 1  # Default reward
-
-    if action == 'forward':
+        reward += HIT_PENALTY
+    elif action == 'forward':
         reward += FORWARD_REWARD
-    
+    else:
+        reward += 1  # Default reward
+
     # if falls of map, sensors are 0, then stop simulation
     if next_state[0] == 0:
         done = True
@@ -319,10 +323,11 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
 
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
+            if new_state[1]>state[1]: reward += GREEN_REWARD
             if new_state[1]<state[1]: reward -= GREEN_REWARD
-            if new_state== (1,0,0) and state==(3,3,2): reward += FOOD_REWARD
-            if new_state== (1,0,0) and state==(3,3,3): reward += FOOD_REWARD
-            if new_state== (1,0,0) and state==(3,3,1): reward += FOOD_REWARD
+            #if new_state== (1,0,0) and state==(3,3,2): reward += FOOD_REWARD
+            #if new_state== (1,0,0) and state==(3,3,3): reward += FOOD_REWARD
+            #if new_state== (1,0,0) and state==(3,3,1): reward += FOOD_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             

@@ -28,7 +28,7 @@ if __name__ == "__main__":
     q_table = initialize_q_table(q_table_path=q_table_path)
 
     print("Initial Q-table:")
-    print_q_table(q_table, num_entries=4)
+    #print_q_table(q_table, num_entries=60)
 
     # Train the Q-table
-    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=15, epsilon=0.15)
+    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=30, epsilon=0.25)
