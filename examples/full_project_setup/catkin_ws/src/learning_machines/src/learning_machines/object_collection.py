@@ -33,7 +33,7 @@ IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
 
 # Define Greenness Constans
 GREEN_BINS = 4 # 0,1,2,3
-GREEN_BIN_THRESHOLDS = [1, 15, 40]
+GREEN_BIN_THRESHOLDS = [1, 20, 45]
 GREEN_BIN_THRESHOLDS_HARDWARE = [5, 20, 40]
 
 GREEN_LOWER_COLOR = np.array([0, 160, 0])
@@ -46,12 +46,15 @@ GREEN_DIRECTION_BINS = 3
 GREEN_DIRECTIONS = [0,1,2]
 
 # Define rewards of moving
+ALMOST_HIT_PENALTY = -25
 HIT_PENALTY = -50
+ALMOST_COLLISION_STATE = IR_BINS-2
 COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
 FOOD_REWARD = 50
 GREEN_REWARD = 15
-FORWARD_REWARD = 3
+FORWARD_REWARD = 3 # encourage getting closer to get in vision range of objects
+LEFT_REWARD = 25 # when hitting the wall straight up receive a left reward
 
 # Define global constants for movement settings
 FORWARD_SPEED_LEFT = 50
@@ -301,8 +304,16 @@ def simulate_robot_action(rob, action=None):
     # Compute reward of action, state:(IR_Distance, %Greenness, Dir.Greenness)
     if next_state[0]==COLLISION_STATE and next_state[1]==FOOD_HIT_STATE:   # Check if collected food: Close distance AND Green
         reward += FOOD_REWARD
+        if action == 'forward':
+            reward += FOOD_REWARD
+    elif next_state[0]==ALMOST_COLLISION_STATE and next_state[1]==0:  # Check if collision: Close distance No Green
+        reward += ALMOST_HIT_PENALTY
+        if action == 'left':
+            reward +=  LEFT_REWARD
     elif next_state[0]==COLLISION_STATE and next_state[1]==0:  # Check if collision: Close distance No Green
         reward += HIT_PENALTY
+        if action == 'left':
+            reward +=  LEFT_REWARD
     elif action == 'forward':
         reward += FORWARD_REWARD
     else:
