@@ -227,9 +227,11 @@ def img_greenness_direction(image) -> int:
 
     # Determine which section has the most green pixels
     max_index = np.argmax(green_pixel_counts)
+    print("max index:", max_index)
+    print("value:", green_pixel_counts)
     
-    if max_index == 0:
-        return max_index
+    if all(value == 0 for value in green_pixel_counts):
+        return 0
     else:
         return max_index+1
 

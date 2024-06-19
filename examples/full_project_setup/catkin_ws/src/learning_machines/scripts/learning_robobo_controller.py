@@ -20,7 +20,7 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
     # SET RESULT NAMES
-    RUN_NAME = "TASK2_Training_Thijs2"
+    RUN_NAME = "TASK2_Training_Thijs3"
     #RUN_NAME = "TASK2_Test_Training"
     q_table_path = RUN_NAME + "_Q_table.pkl"
     result_path = RUN_NAME + "_Results.csv"
