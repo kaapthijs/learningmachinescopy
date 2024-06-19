@@ -325,9 +325,6 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             new_state, reward, done = simulate_robot_action(rob, action)
             if new_state[1]>state[1]: reward += GREEN_REWARD
             if new_state[1]<state[1]: reward -= GREEN_REWARD
-            #if new_state== (1,0,0) and state==(3,3,2): reward += FOOD_REWARD
-            #if new_state== (1,0,0) and state==(3,3,3): reward += FOOD_REWARD
-            #if new_state== (1,0,0) and state==(3,3,1): reward += FOOD_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             
@@ -352,7 +349,10 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             state = new_state
 
             # Check collision with object, or maximum steps is reached, then stop simulation
-            if reward == HIT_PENALTY or step >= max_steps-1: 
+            if step >= max_steps-1:
+                print(f"/n I found {rob.nr_food_collected} food objects!!")
+                rob.talk(f"Hello, I found {rob.nr_food_collected} food objects!!")
+
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
@@ -377,8 +377,14 @@ def play_q_table(rob, q_table):
         rob.play_simulation()
         print("Start simulation")
 
-    # Initialize the episode
-    state = (1,1,1)
+    # Move phone to start view
+    rob.set_phone_tilt_blocking(109, 20)
+
+    # Build up state
+    state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
+    state_greenness, greenness_direction = get_state_greenness(state_img)
+
+    state = (1,state_greenness, greenness_direction)        
     done = False
 
     while True:
@@ -392,8 +398,12 @@ def play_q_table(rob, q_table):
         state = new_state
 
         # Check if robot has collided, then stop simulation
-        if COLLISION_STATE in state: 
+        if rob.nr_food_collected == 5: 
             done = True
+
+            rob.talk(f"Hello, I found {rob.nr_food_collected} food objects!!")
+
+
             if isinstance(rob, SimulationRobobo):
                 rob.stop_simulation()
 

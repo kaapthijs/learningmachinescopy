@@ -2,7 +2,7 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import initialize_q_table,print_q_table,train_q_table
+from learning_machines import initialize_q_table,print_q_table,train_q_table, play_q_table, load_q_table
 from data_files import FIGRURES_DIR
 
 if __name__ == "__main__":
@@ -32,3 +32,7 @@ if __name__ == "__main__":
 
     # Train the Q-table
     train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=30, epsilon=0.25)
+
+    trained_q_table = load_q_table(q_table_path=q_table_path)
+
+    #play_q_table(rob,)
