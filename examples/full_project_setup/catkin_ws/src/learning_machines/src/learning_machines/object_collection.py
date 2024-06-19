@@ -42,8 +42,8 @@ GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([85, 237, 85])
 
-GREEN_DIRECTION_BINS = 3
-GREEN_DIRECTIONS = [0,1,2]
+GREEN_DIRECTION_BINS = 4
+GREEN_DIRECTIONS = [0,1,2,3]
 
 # Define rewards of moving
 ALMOST_HIT_PENALTY = -25
@@ -53,7 +53,7 @@ COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
 FOOD_REWARD = 50
 GREEN_REWARD = 15
-FORWARD_REWARD = 5 # encourage getting closer to get in vision range of objects
+FORWARD_REWARD = 8 # encourage getting closer to get in vision range of objects
 LEFT_REWARD = 25 # when hitting the wall straight up receive a left reward
 
 # Define global constants for movement settings
@@ -214,7 +214,7 @@ def calculate_img_greenness(image) -> int:
 def img_greenness_direction(image) -> int:
     # Split the mask into five vertical sections
     height, width = image.shape
-    section_width = width // GREEN_DIRECTION_BINS
+    section_width = width // GREEN_DIRECTION_BINS-1
 
     sections = [
         image[:, :section_width],
@@ -228,7 +228,11 @@ def img_greenness_direction(image) -> int:
     # Determine which section has the most green pixels
     max_index = np.argmax(green_pixel_counts)
     
-    return max_index
+    if max_index == 0:
+        return max_index
+    else:
+        return max_index+1
+
 
 # Functiont that retrieves greenness and computes greenness bin
 def get_state_greenness(image, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
@@ -241,7 +245,7 @@ def get_state_greenness(image, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN
 
     # Split the mask into vertical sections
     height, width = mask_green.shape
-    section_width = width // GREEN_DIRECTION_BINS
+    section_width = width // GREEN_DIRECTION_BINS-1
 
     image_centre = mask_green[:, section_width:2*section_width]
     cv2.imwrite(str(FIGRURES_DIR / "green_filter_center.png"), image_centre) # store image for testing reasons
