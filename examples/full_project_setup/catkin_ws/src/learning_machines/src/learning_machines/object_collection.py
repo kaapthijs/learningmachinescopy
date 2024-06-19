@@ -366,7 +366,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
             if new_state[1]>state[1]: reward += GREEN_REWARD
-            if new_state[1]<state[1]: reward -= GREEN_REWARD
+            if new_state[1]<state[1] and action != "forward" : reward -= GREEN_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             
