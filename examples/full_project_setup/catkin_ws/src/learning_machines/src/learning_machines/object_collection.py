@@ -53,7 +53,7 @@ COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
 FOOD_REWARD = 50
 GREEN_REWARD = 15
-FORWARD_REWARD = 3 # encourage getting closer to get in vision range of objects
+FORWARD_REWARD = 5 # encourage getting closer to get in vision range of objects
 LEFT_REWARD = 25 # when hitting the wall straight up receive a left reward
 
 # Define global constants for movement settings
@@ -305,7 +305,7 @@ def simulate_robot_action(rob, action=None):
     if next_state[0]==COLLISION_STATE and next_state[1]==FOOD_HIT_STATE:   # Check if collected food: Close distance AND Green
         reward += FOOD_REWARD
         if action == 'forward':
-            reward += FOOD_REWARD
+            reward += FOOD_REWARD + GREEN_REWARD + FORWARD_REWARD
     elif next_state[0]==ALMOST_COLLISION_STATE and next_state[1]==0:  # Check if collision: Close distance No Green
         reward += ALMOST_HIT_PENALTY
         if action == 'left':
