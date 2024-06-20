@@ -20,7 +20,7 @@ from robobo_interface import (
 
 # GLOBAL VARIABLES
 # Define number of sensors used
-NUM_SENSORS = 3
+NUM_SENSORS = 1
 
 # Define the possible actions
 ACTIONS = ['left', 'forward', 'right']
@@ -28,7 +28,7 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of InfraRed bins where sensor falls in
 IR_BINS = 4    # sensor value could be 0,1,2,3
-IR_BIN_THRESHOLDS = [4,7,40]
+IR_BIN_THRESHOLDS = [4,7,550]
 IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
 
 # Define Greenness Constans
@@ -69,16 +69,16 @@ LEFT_SPEED_LEFT = -30
 LEFT_SPEED_RIGHT = 30
 LEFT_DURATION = 100
 
-FORWARD_SPEED_LEFT_HDW = 50
-FORWARD_SPEED_RIGHT_HDW = 50
+FORWARD_SPEED_LEFT_HDW = 100
+FORWARD_SPEED_RIGHT_HDW = 100
 FORWARD_DURATION_HDW = 300
 
-RIGHT_SPEED_LEFT_HDW = 40
+RIGHT_SPEED_LEFT_HDW = 45
 RIGHT_SPEED_RIGHT_HDW = -40
 RIGHT_DURATION_HDW = 200
 
 LEFT_SPEED_LEFT_HDW = -40
-LEFT_SPEED_RIGHT_HDW = 40
+LEFT_SPEED_RIGHT_HDW = 45
 LEFT_DURATION_HDW = 200
 
 # Define global variables for the image dimensions and clipping
@@ -166,6 +166,7 @@ def get_IR_values(rob) -> list:
     #left_left_IR = ir_values[7]
     center_IR = ir_values[4]
     #right_right_IR = ir_values[5]
+    print("Ir values: " ,round(center_IR))
 
     return round(center_IR)
 
@@ -183,11 +184,14 @@ def move_robot(rob, action):
 # Funciton that moves robot
 def move_robot_hardware(rob, action):
     if action == 'forward':
-        rob.move(FORWARD_SPEED_LEFT_HDW, FORWARD_SPEED_RIGHT_HDW, FORWARD_DURATION_HDW)
+        rob.move_blocking(FORWARD_SPEED_LEFT_HDW, FORWARD_SPEED_RIGHT_HDW, FORWARD_DURATION_HDW)
+        #rob.sleep(0.05)
     elif action == 'right':
         rob.move_blocking(RIGHT_SPEED_LEFT_HDW, RIGHT_SPEED_RIGHT_HDW, RIGHT_DURATION_HDW)
+        #rob.sleep(0.05)
     elif action == 'left':
         rob.move_blocking(LEFT_SPEED_LEFT_HDW, LEFT_SPEED_RIGHT_HDW, LEFT_DURATION_HDW)
+        #rob.sleep(0.05)
        
     rob.sleep(0.1)  # block for _ seconds
 
@@ -214,12 +218,12 @@ def calculate_img_greenness(image) -> int:
 def img_greenness_direction(image) -> int:
     # Split the mask into five vertical sections
     height, width = image.shape
-    section_width = width // GREEN_DIRECTION_BINS-1
+    section_width = width // GREEN_DIRECTION_BINS
 
     sections = [
         image[:, :section_width],
-        image[:, section_width:2*section_width],
-        image[:, 2*section_width:]
+        image[:, section_width:3*section_width],
+        image[:, 3*section_width:]
     ]
 
     # Count the number of green pixels in each section
@@ -247,9 +251,9 @@ def get_state_greenness(image, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN
 
     # Split the mask into vertical sections
     height, width = mask_green.shape
-    section_width = width // GREEN_DIRECTION_BINS-1
+    section_width = width // GREEN_DIRECTION_BINS
 
-    image_centre = mask_green[:, section_width:2*section_width]
+    image_centre = mask_green[:, section_width:3*section_width]
     cv2.imwrite(str(FIGRURES_DIR / "green_filter_center.png"), image_centre) # store image for testing reasons
     
     greenness = calculate_img_greenness(image_centre)
