@@ -65,7 +65,4 @@ class Training_Results:
             line = constant_values + step_values
             
             # Write the line to the CSV file
-            writer.writerow(line)   
-
-            print(f"Line written to {file_dir} successfully.")
-            print(f"Line written to {line} successfully.")
+            writer.writerow(line)
