@@ -28,7 +28,7 @@ NUM_ACTIONS = len(ACTIONS)
 
 # Define number of InfraRed bins where sensor falls in
 IR_BINS = 4    # sensor value could be 0,1,2,3
-IR_BIN_THRESHOLDS = [4,7,25]
+IR_BIN_THRESHOLDS = [4,7,40]
 IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
 
 # Define Greenness Constans
@@ -61,24 +61,24 @@ FORWARD_SPEED_LEFT = 50
 FORWARD_SPEED_RIGHT = 50
 FORWARD_DURATION = 300
 
-RIGHT_SPEED_LEFT = 40
-RIGHT_SPEED_RIGHT = -40
+RIGHT_SPEED_LEFT = 30
+RIGHT_SPEED_RIGHT = -30
 RIGHT_DURATION = 100
 
-LEFT_SPEED_LEFT = -40
-LEFT_SPEED_RIGHT = 40
+LEFT_SPEED_LEFT = -30
+LEFT_SPEED_RIGHT = 30
 LEFT_DURATION = 100
 
 FORWARD_SPEED_LEFT_HDW = 50
 FORWARD_SPEED_RIGHT_HDW = 50
 FORWARD_DURATION_HDW = 300
 
-RIGHT_SPEED_LEFT_HDW = 60
-RIGHT_SPEED_RIGHT_HDW = -60
+RIGHT_SPEED_LEFT_HDW = 40
+RIGHT_SPEED_RIGHT_HDW = -40
 RIGHT_DURATION_HDW = 200
 
-LEFT_SPEED_LEFT_HDW = -60
-LEFT_SPEED_RIGHT_HDW = 60
+LEFT_SPEED_LEFT_HDW = -40
+LEFT_SPEED_RIGHT_HDW = 40
 LEFT_DURATION_HDW = 200
 
 # Define global variables for the image dimensions and clipping
@@ -419,7 +419,7 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
     save_q_table(q_table, q_table_path)
 
 # Training function using Q-learning
-def play_q_table(rob, q_table):
+def play_q_table(rob, q_table, epsilon, hardware_flag=False):
 
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
@@ -437,10 +437,14 @@ def play_q_table(rob, q_table):
 
     while True:
         # Determine action by state from q-table
-        action, _ = get_action(q_table, state)
+        action, action_index = get_action(q_table, state, epsilon)
 
         # Take the action and observe the new state
-        new_state = play_robot_action_hardware(rob, action, thresholds=IR_BIN_THRESHOLDS_HARDWARE)
+        if hardware_flag:
+            new_state = play_robot_action_hardware(rob, action, thresholds=IR_BIN_THRESHOLDS_HARDWARE)
+
+        else:
+            new_state = play_robot_action(rob, action)
 
         print(f"Moved from state {state} to {new_state} by going {action}.")
 
