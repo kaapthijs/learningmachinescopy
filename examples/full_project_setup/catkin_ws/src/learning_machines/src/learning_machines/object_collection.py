@@ -6,7 +6,6 @@ import itertools
 import random
 
 from data_files import FIGRURES_DIR
-from data_files import RESULT_DIR
 
 from robobo_interface import (
     IRobobo,
@@ -17,6 +16,11 @@ from robobo_interface import (
     SimulationRobobo,
     HardwareRobobo,
 )
+
+from learning_machines import Training_Results
+
+# Initiate Training_Results object
+global TRAINING_RESULTS
 
 # GLOBAL VARIABLES
 # Define number of sensors used
@@ -89,12 +93,16 @@ CLIP_HEIGHT = IMAGE_HEIGHT // 2
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
-    with open(str(RESULT_DIR / q_table_path), 'rb') as f:
+    with open(q_table_path, 'rb') as f:
         return pickle.load(f)
     
 def save_q_table(q_table, q_table_path):
-    with open(str(RESULT_DIR / q_table_path), 'wb') as f:
+    with open(q_table_path, 'wb') as f:
         pickle.dump(q_table, f)
+
+def clear_csv(results_path):
+    with open(results_path, mode='w', newline='') as file:
+        pass
 
 # Initialize Q-table
 def initialize_q_table(q_table_path, num_ir_bins=IR_BINS, num_green_bins=GREEN_BINS, num_direction_bins=GREEN_DIRECTION_BINS, num_actions=NUM_ACTIONS):
@@ -166,7 +174,8 @@ def get_IR_values(rob) -> list:
     #left_left_IR = ir_values[7]
     center_IR = ir_values[4]
     #right_right_IR = ir_values[5]
-    print("Ir values: " ,round(center_IR))
+
+    TRAINING_RESULTS.steps['center_IR'] = center_IR
 
     return round(center_IR)
 
@@ -228,6 +237,7 @@ def img_greenness_direction(image) -> int:
 
     # Count the number of green pixels in each section
     green_pixel_counts = [np.count_nonzero(section) for section in sections]
+    TRAINING_RESULTS.steps['green_pixels'] = green_pixel_counts
 
     # Determine which section has the most green pixels
     max_index = np.argmax(green_pixel_counts)
@@ -273,9 +283,13 @@ def get_state(rob, thresholds, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN
     # Build up state
     state_ir = value_to_bin(get_IR_values(rob), thresholds)
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
-    state_greenness, greenness_direction = get_state_greenness(state_img, lower_color, higher_color)
+    state_greenness, green_direction = get_state_greenness(state_img, lower_color, higher_color)
 
-    return (state_ir,state_greenness, greenness_direction)
+    TRAINING_RESULTS.steps['center_bin'] = state_ir
+    TRAINING_RESULTS.steps['greenness_bin'] = state_greenness
+    TRAINING_RESULTS.steps['green_direction'] = green_direction
+
+    return (state_ir,state_greenness, green_direction)
 
 # Function that retrieves action from q_table
 # if epsilon is given, retrieve with creativity, else retrive argmax
@@ -339,17 +353,19 @@ def simulate_robot_action(rob, action=None):
 
 # Training function using Q-learning
 def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
-    # setup data file to store metrics while training
-    create_csv_with_header(header_values=['run_name',
-                                          'IR_BINS',
-                                          'IR_BIN_THRESHOLDS',
-                                          'episode',
-                                          'step',
-                                          'reward',
-                                          'action',
-                                          'selected_values',
-                                          'state'], 
-                            dir_str= str(RESULT_DIR / results_path))
+    global TRAINING_RESULTS
+    # Initialize Training Object and CSV to store results
+    clear_csv(results_path)
+    TRAINING_RESULTS = Training_Results.Training_Results(run_name=run_name,
+                                        ir_bin_thresholds=IR_BIN_THRESHOLDS,
+                                        green_bin_thresholds=GREEN_BIN_THRESHOLDS,
+                                        num_episodes=num_episodes,
+                                        max_steps=max_steps,
+                                        alpha=alpha,
+                                        gamma=gamma,
+                                        epsilon=epsilon)
+    
+    TRAINING_RESULTS.create_csv_with_header(results_path)
 
     for episode in range(num_episodes):
         if isinstance(rob, SimulationRobobo):
@@ -369,9 +385,12 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
 
         for step in range(max_steps):
             print("Episode: ", episode, "Step: ", step)
+            TRAINING_RESULTS.steps['episode'] = episode
+            TRAINING_RESULTS.steps['step'] = step
 
             # Choose an action, random by prob. epsilon, max, by prob 1-epsilon
             action, action_index = get_action(q_table, state, epsilon)
+            TRAINING_RESULTS.steps['action'] = action
 
             # Take the action and observe the new state and reward
             new_state, reward, done = simulate_robot_action(rob, action)
@@ -379,36 +398,33 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             if new_state[1]<state[1] and action != "forward" : reward -= GREEN_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
-            
+            TRAINING_RESULTS.steps['new_state'] = new_state
+            TRAINING_RESULTS.steps['reward'] = reward
+
             # Update the Q-value in Q-table
             max_future_q = max(q_table[new_state])
             current_q = q_table[state][action_index]
             q_table[state][action_index] = current_q + alpha * (reward + gamma * max_future_q - current_q)
 
-            # Store result in csv.
-            write_csv(data_values= [run_name,
-                                    IR_BINS,
-                                    IR_BIN_THRESHOLDS,
-                                    episode,
-                                    step,
-                                    reward,
-                                    action,
-                                    get_IR_values(rob),
-                                    state],
-                      dir_str=str(RESULT_DIR / results_path))
-            
-            # Transition to the new state
-            state = new_state
-
             # Check collision with object, or maximum steps is reached, then stop simulation
+            objects_found = 0
             if step >= max_steps-1:
-                print(f"/n I found {rob.nr_food_collected()} food objects!!")
-                rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
+                objects_found = rob.nr_food_collected()
+                print(f"/n I found {objects_found} food objects!!")
+                rob.talk(f"Hello, I found {objects_found} food objects!!")
 
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
                 print(f"------------------- END EPISODE {episode} --------------------")
+
+            TRAINING_RESULTS.steps['objects_found'] = objects_found
+            
+            # Store result in csv.
+            TRAINING_RESULTS.write_line_to_csv(results_path)
+
+            # Transition to the new state
+            state = new_state
 
             if done:
                 break
