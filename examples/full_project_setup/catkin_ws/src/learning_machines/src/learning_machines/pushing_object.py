@@ -272,7 +272,7 @@ def img_redness_direction(image) -> int:
         image[:, 3*section_width:]
     ]
 
-    # Count the number of green pixels in each section
+    # Count the number of red pixels in each section
     red_pixel_counts = [np.count_nonzero(section) for section in sections]
     TRAINING_RESULTS.steps['red_pixels'] = red_pixel_counts
 
@@ -343,7 +343,7 @@ def get_state_redness(image, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHE
 
 # Function that gets state
 def get_state(rob, thresholds, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
-    # Build up state
+
     state_ir = value_to_bin(get_IR_values(rob), thresholds)
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
     state_greenness, green_direction = get_state_greenness(state_img, lower_color, higher_color)
@@ -637,3 +637,37 @@ def test_robo2(rob):
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
+
+
+
+
+
+
+
+
+
+    # Build up state
+
+    ################## Sketch 1)
+
+    # Getting RED Object
+    # State[ Center_IR, % Red, Direction Red]       : Action ['left', 'forward', 'right'] (pivot/move to next direction bin)
+
+    # Getting to GREEN surface
+    # State[ Center_IR, % Green, Direction Green]   : Action ['left', 'forward', 'right']
+
+
+    # Pro:  Could steer into Objective
+    # Con:  Difficult reward function
+
+
+
+    ################## Sketch 2)
+    # Pro:  Simple reward function
+    # Con:  Assumes hardware drives straight forward 
+
+    # Searching Objective
+    # State[ Center_IR, Red/Green Boolean, % Colour, Direction Colour]       : Action ['left', 'right'] (pivot to next direction bin)
+
+    # Drive
+    # State[ Center_IR, % Color]   : Action ['forward']
