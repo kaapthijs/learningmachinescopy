@@ -25,8 +25,6 @@ class Training_Results:
                       'green_direction': None,
                       'greenness_per': None,
                       'greenness_bin': None,
-                      'red_pixels': None,
-                      'red_direction': None,
                       'state': None,
                       'action': None,
                       'new_state': None,
