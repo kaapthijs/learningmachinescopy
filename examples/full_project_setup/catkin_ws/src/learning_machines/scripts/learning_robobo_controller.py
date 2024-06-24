@@ -2,7 +2,9 @@
 import sys
 
 from robobo_interface import SimulationRobobo, HardwareRobobo
-from learning_machines import initialize_q_table,print_q_table,train_q_table, play_q_table, load_q_table
+from learning_machines import initialize_q_table,print_q_table,train_q_table, play_q_table, load_q_table, test_robo
+#from learning_machines import test_take_picture
+
 from data_files import FIGRURES_DIR
 from data_files import RESULT_DIR
 
@@ -21,20 +23,21 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
     # SET RESULT NAMES
-    RUN_NAME = "TASK2_Test_CSV"
+    RUN_NAME = "TASK3_Test"
     q_table_path = str(RESULT_DIR)  + '/' + RUN_NAME + "_Q_table.pkl"
     result_path = str(RESULT_DIR) + '/'  + RUN_NAME + "_Results.csv"
 
     # Load or initialize the Q-table
-    q_table = initialize_q_table(q_table_path=q_table_path)
+    # q_table = initialize_q_table(q_table_path=q_table_path)
 
     #print("Initial Q-table:")
-    print_q_table(q_table, num_entries=60)
+    # print_q_table(q_table, num_entries=60)
 
     # Train the Q-table
-    train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=3, max_steps=10, epsilon=0.30)
+    #train_q_table(rob, RUN_NAME, q_table, q_table_path, result_path, num_episodes=3, max_steps=10, epsilon=0.30)
 
     #trained_q_table = load_q_table(q_table_path=q_table_path)
     #print_q_table(trained_q_table, num_entries=60)
 
     #play_q_table(rob, trained_q_table, epsilon=0.05, hardware_flag=True)
+    test_robo(rob)

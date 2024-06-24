@@ -83,11 +83,13 @@ def test_phone_moving(rob: IRobobo):
 def test_take_picture(rob: IRobobo):
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
-    rob.set_phone_tilt_blocking(109, 20)
-    rob.set_phone_pan_blocking(11, 20)
+    
+    rob.set_phone_tilt_blocking(109, 60)
+    
+    rob.move_blocking(-40, -40, 500)
 
     image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_green_block_rgb.png"), image)
+    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
 
     print("Image shape:", image.shape)
     print(image)
