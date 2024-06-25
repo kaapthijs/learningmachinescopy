@@ -46,8 +46,8 @@ GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([85, 237, 85])
 
-GREEN_DIRECTION_BINS = 5
-GREEN_DIRECTIONS = [1,2,3,4,5]
+GREEN_DIRECTION_BINS = 3
+GREEN_DIRECTIONS = [0,1,2,3]
 
 # Define Redness Constans
 RED_BINS = 4 # 0,1,2,3
@@ -60,8 +60,10 @@ RED_HIGHER_COLOR = np.array([250,80,80])
 RED_LOWER_COLOR_HARDWARE = np.array([120,0,0])
 RED_HIGHER_COLOR_HARDWARE = np.array([250,100,80])
 
-RED_DIRECTION_BINS = 4
+RED_DIRECTION_BINS = 3
 RED_DIRECTIONS = [0,1,2,3]
+
+RED_OBJECT_THRESHOLD = 65
 
 # Define rewards of moving
 ALMOST_HIT_PENALTY = -25
@@ -105,6 +107,9 @@ IMAGE_WIDTH = 512
 IMAGE_DEPTH = 3 #RGB
 CLIP_HEIGHT = IMAGE_HEIGHT // 3
 CLIP_WIDTH = IMAGE_WIDTH // 4
+
+IMAGE_CENTER_Y = IMAGE_WIDTH // 2
+IMAGE_OBJECT_WIDHT = 100
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -233,11 +238,11 @@ def get_state_img(rob: IRobobo, dir_str):
 # Function that calculates 'colourness' in image
 def calculate_img_colourness(image) -> int:
     # Calculate percentage 'green' pixels
-    green_pixel_count = np.count_nonzero(image)
+    colour_pixel_count = np.count_nonzero(image)
     total_pixel_count = image.size
-    greenness_percentage = (green_pixel_count / total_pixel_count) * 100
+    colourness_percentage = (colour_pixel_count / total_pixel_count) * 100
 
-    return int(greenness_percentage)
+    return int(colourness_percentage)
 
 def img_greenness_direction(image) -> int:
     # Split the mask into five vertical sections
@@ -342,7 +347,24 @@ def get_state_redness(image, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHE
 
     return redness, red_direction
 
+def get_state_object(image, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR):
+        # clip image to object detection size
+    print(image.shape)
+    height, width, _ = image.shape
+    
+    object_view = image[height-IMAGE_OBJECT_WIDHT:, IMAGE_HEIGHT//4-(IMAGE_OBJECT_WIDHT//2) : IMAGE_HEIGHT//4+(IMAGE_OBJECT_WIDHT//2)]
+    cv2.imwrite(str(FIGRURES_DIR / "red_object.png"), object_view) # store image for testing reasons
 
+    # get red mask
+    red_object_view = cv2.inRange( cv2.cvtColor(object_view, cv2.COLOR_BGR2RGB), lower_color, higher_color)
+    cv2.imwrite(str(FIGRURES_DIR / "red_filter_object.png"), red_object_view) # store image for testing reasons
+
+    redness = calculate_img_colourness(red_object_view)
+    print(f"Redness is : {redness}")
+
+    if redness >= RED_OBJECT_THRESHOLD:
+        return True
+    else: return False
 
 # Function that gets state
 def get_state(rob, thresholds, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
@@ -443,14 +465,14 @@ def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_
 
         # Move phone to start view
         rob.set_phone_tilt_blocking(109, 60)
-        rob.set_phone_tilt_blocking(109, 60)
-        rob.move_blocking(50,50,400)
 
         # Build up state
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
         state_greenness, greenness_direction = get_state_greenness(state_img)
+        state_object = get_state_object(state_img)
 
-        state = (1,state_greenness, greenness_direction)        
+        state = (1,state_greenness, greenness_direction, state_object)     
+        print(state)   
         done = False
 
         for step in range(max_steps):
@@ -533,8 +555,6 @@ def train_q_table_destination(rob, run_name, q_table, q_table_path,results_path,
 
         # Move phone to start view
         rob.set_phone_tilt_blocking(109, 60)
-        rob.set_phone_tilt_blocking(109, 60)
-        rob.move_blocking(50,50,400)
 
         # Build up state
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
@@ -698,17 +718,14 @@ def play_q_table_destination(rob, q_table, epsilon, hardware_flag=False):
 
 # Function that collects object and deliver
 def play_collection(rob):
+    # search object and position itself
+    play_q_table_object()
 
-    # Collect object
-    while True:
+    # move object into gripper
+    rob.move_blocking(50,50,400)
 
-        play_q_table_object()
-
-    
-    # Retrieve object
-    while True:
-
-        play_q_table_destination()
+    # search and drive to destination    
+    play_q_table_destination()
 
 
 
@@ -803,34 +820,63 @@ def test_robo2(rob):
 
 
 
+def test_robo_blocks(rob):
+    if isinstance(rob, SimulationRobobo):
+        rob.play_simulation()
+        print("Start simulation")
+    
+    rob.set_phone_tilt_blocking(109, 60)
+
+    image = rob.get_image_front()
+    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
+
+    total_filter = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    total_filter = cv2.inRange(image, RED_LOWER_COLOR, RED_HIGHER_COLOR)
+    cv2.imwrite(str(FIGRURES_DIR / "red_filter.png"), total_filter) # store image for testing reasons
+
+    # clip image to object detection size
+    print(image.shape)
+    height, width, _= image.shape
+    
+    section_height = height // (RED_DIRECTION_BINS*2)
+
+    image = image[5*section_height:, IMAGE_CENTER_Y-IMAGE_OBJECT_WIDHT/2:IMAGE_CENTER_Y+IMAGE_OBJECT_WIDHT/2]
+    cv2.imwrite(str(FIGRURES_DIR / "red_object.png"), image) # store image for testing reasons
+
+    # get red mask
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    mask_red = cv2.inRange(image, RED_LOWER_COLOR, RED_HIGHER_COLOR)
+    cv2.imwrite(str(FIGRURES_DIR / "red_filter_object.png"), mask_red) # store image for testing reasons
+
+    redness = calculate_img_colourness(mask_red)
+    print(f"Redness is : {redness}")
 
 
 
 
 
+# Build up state
 
-    # Build up state
+################## Sketch 1)
 
-    ################## Sketch 1)
+# Getting RED Object
+# State[ Center_IR, % Red, Direction Red]       : Action ['left', 'forward', 'right'] (pivot/move to next direction bin)
 
-    # Getting RED Object
-    # State[ Center_IR, % Red, Direction Red]       : Action ['left', 'forward', 'right'] (pivot/move to next direction bin)
-
-    # Getting to GREEN surface
-    # State[ Center_IR, % Green, Direction Green]   : Action ['left', 'forward', 'right']
-
-
-    # Pro:  Could steer into Objective
-    # Con:  Difficult reward function
+# Getting to GREEN surface
+# State[ Center_IR, % Green, Direction Green]   : Action ['left', 'forward', 'right']
 
 
+# Pro:  Could steer into Objective
+# Con:  Difficult reward function
 
-    ################## Sketch 2)
-    # Pro:  Simple reward function
-    # Con:  Assumes hardware drives straight forward 
 
-    # Searching Objective
-    # State[ Center_IR, Red/Green Boolean, % Colour, Direction Colour]       : Action ['left', 'right'] (pivot to next direction bin)
 
-    # Drive
-    # State[ Center_IR, % Color]   : Action ['forward']
+################## Sketch 2)
+# Pro:  Simple reward function
+# Con:  Assumes hardware drives straight forward 
+
+# Searching Objective
+# State[ Center_IR, Red/Green Boolean, % Colour, Direction Colour]       : Action ['left', 'right'] (pivot to next direction bin)
+
+# Drive
+# State[ Center_IR, % Color]   : Action ['forward']
