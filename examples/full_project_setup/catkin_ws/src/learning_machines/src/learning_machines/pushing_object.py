@@ -420,7 +420,7 @@ def simulate_robot_action(rob, action=None):
 
 
 # Training function using Q-learning
-def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     global TRAINING_RESULTS
     # Initialize Training Object and CSV to store results
     clear_csv(results_path)
@@ -508,8 +508,99 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
     # Save the final Q-table
     save_q_table(q_table, q_table_path)
 
+
 # Training function using Q-learning
-def play_q_table(rob, q_table, epsilon, hardware_flag=False):
+def train_q_table_destination(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+    global TRAINING_RESULTS
+    # Initialize Training Object and CSV to store results
+    clear_csv(results_path)
+    TRAINING_RESULTS = Training_Results.Training_Results(run_name=run_name,
+                                        ir_bin_thresholds=IR_BIN_THRESHOLDS,
+                                        green_bin_thresholds=GREEN_BIN_THRESHOLDS,
+                                        num_episodes=num_episodes,
+                                        max_steps=max_steps,
+                                        alpha=alpha,
+                                        gamma=gamma,
+                                        epsilon=epsilon)
+    
+    TRAINING_RESULTS.create_csv_with_header(results_path)
+
+    for episode in range(num_episodes):
+        if isinstance(rob, SimulationRobobo):
+            rob.play_simulation()
+            print("------ Start simulation: ", episode)
+            print("\n")
+
+        # Move phone to start view
+        rob.set_phone_tilt_blocking(109, 60)
+        rob.set_phone_tilt_blocking(109, 60)
+        rob.move_blocking(50,50,400)
+
+        # Build up state
+        state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
+        state_greenness, greenness_direction = get_state_greenness(state_img)
+
+        state = (1,state_greenness, greenness_direction)        
+        done = False
+
+        for step in range(max_steps):
+            print("Episode: ", episode, "Step: ", step)
+            TRAINING_RESULTS.steps['episode'] = episode
+            TRAINING_RESULTS.steps['step'] = step
+
+            # Choose an action, random by prob. epsilon, max, by prob 1-epsilon
+            action, action_index = get_action(q_table, state, epsilon)
+            TRAINING_RESULTS.steps['action'] = action
+
+            # Take the action and observe the new state and reward  state:[IR, %Green, Direction Green]
+            new_state, reward, done = simulate_robot_action(rob, action)
+            if new_state[1]>state[1]: reward += GREEN_REWARD
+            if new_state[1]<state[1] and action != "forward" : reward -= 2*GREEN_REWARD
+
+            print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
+            TRAINING_RESULTS.steps['new_state'] = new_state
+            TRAINING_RESULTS.steps['reward'] = reward
+
+            # Update the Q-value in Q-table
+            max_future_q = max(q_table[new_state])
+            current_q = q_table[state][action_index]
+            q_table[state][action_index] = current_q + alpha * (reward + gamma * max_future_q - current_q)
+
+            # Check collision with object, or maximum steps is reached, then stop simulation
+            objects_found = 0
+            if step >= max_steps-1:
+                objects_found = rob.nr_food_collected()
+                print(f"/n I found {objects_found} food objects!!")
+                rob.talk(f"Hello, I found {objects_found} food objects!!")
+
+                done = True
+                if isinstance(rob, SimulationRobobo):
+                    rob.stop_simulation()
+                print(f"------------------- END EPISODE {episode} --------------------")
+
+            TRAINING_RESULTS.steps['objects_found'] = objects_found
+            
+            # Store result in csv.
+            TRAINING_RESULTS.write_line_to_csv(results_path)
+
+            # Transition to the new state
+            state = new_state
+
+            if done:
+                break
+
+        # Save Q-table periodically
+        if episode % 10 == 0:
+            save_q_table(q_table, q_table_path)
+    
+    print_q_table(q_table, num_entries=50)
+
+    # Save the final Q-table
+    save_q_table(q_table, q_table_path)
+
+
+# Training function using Q-learning
+def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
 
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
@@ -555,6 +646,71 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
             break
 
     print_q_table(q_table)
+
+# Training function using Q-learning
+def play_q_table_destination(rob, q_table, epsilon, hardware_flag=False):
+
+    if isinstance(rob, SimulationRobobo):
+        rob.play_simulation()
+        print("Start simulation")
+
+    # Move phone to start view
+    rob.set_phone_tilt_blocking(109, 20)
+
+    # Build up state
+    state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
+    state_greenness, greenness_direction = get_state_greenness(state_img)
+
+    state = (1,state_greenness, greenness_direction)        
+    done = False
+
+    while True:
+        # Determine action by state from q-table
+        action, action_index = get_action(q_table, state, epsilon)
+
+        # Take the action and observe the new state
+        if hardware_flag:
+            new_state = play_robot_action_hardware(rob, action, thresholds=IR_BIN_THRESHOLDS_HARDWARE)
+
+        else:
+            new_state = play_robot_action(rob, action)
+
+        print(f"Moved from state {state} to {new_state} by going {action}.")
+
+        # Transition to the new state
+        state = new_state
+
+        # Check if robot has collided, then stop simulation
+        #if rob.nr_food_collected == 5: 
+         #   done = True
+
+          #  rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
+
+
+#            if isinstance(rob, SimulationRobobo):
+ #               rob.stop_simulation()
+
+        if done:
+            break
+
+    print_q_table(q_table)
+
+
+# Function that collects object and deliver
+def play_collection(rob):
+
+    # Collect object
+    while True:
+
+        play_q_table_object()
+
+    
+    # Retrieve object
+    while True:
+
+        play_q_table_destination()
+
+
 
 # Function to test actions
 def test_robo(rob):
