@@ -73,6 +73,7 @@ COLLISION_STATE = IR_BINS-1
 FOOD_HIT_STATE = GREEN_BINS-1
 FOOD_REWARD = 50
 GREEN_REWARD = 15
+RED_REWARD = 15
 FORWARD_REWARD = 8 # encourage getting closer to get in vision range of objects
 LEFT_REWARD = 25 # when hitting the wall straight up receive a left reward
 
@@ -259,7 +260,10 @@ def img_greenness_direction(image) -> int:
 
     # Count the number of green pixels in each section
     green_pixel_counts = [np.count_nonzero(section) for section in sections]
-    TRAINING_RESULTS.steps['green_pixels'] = green_pixel_counts
+    
+    try: TRAINING_RESULTS.steps['green_pixels'] = green_pixel_counts
+
+    except: pass
 
     # Determine which section has the most green pixels
     max_index = np.argmax(green_pixel_counts)
@@ -468,11 +472,10 @@ def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_
 
         # Build up state
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
-        state_greenness, greenness_direction = get_state_greenness(state_img)
+        state_redness, redness_direction = get_state_greenness(state_img)
         state_object = get_state_object(state_img)
 
-        state = (1,state_greenness, greenness_direction, state_object)     
-        print(state)   
+        state = (1, state_redness, redness_direction, state_object)        
         done = False
 
         for step in range(max_steps):
@@ -486,8 +489,8 @@ def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_
 
             # Take the action and observe the new state and reward  state:[IR, %Green, Direction Green]
             new_state, reward, done = simulate_robot_action(rob, action)
-            if new_state[1]>state[1]: reward += GREEN_REWARD
-            if new_state[1]<state[1] and action != "forward" : reward -= 2*GREEN_REWARD
+            if new_state[1]>state[1]: reward += RED_REWARD
+            if new_state[1]<state[1] and action != "forward" : reward -= 2*RED_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             TRAINING_RESULTS.steps['new_state'] = new_state
@@ -498,19 +501,13 @@ def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_
             current_q = q_table[state][action_index]
             q_table[state][action_index] = current_q + alpha * (reward + gamma * max_future_q - current_q)
 
-            # Check collision with object, or maximum steps is reached, then stop simulation
-            objects_found = 0
-            if step >= max_steps-1:
-                objects_found = rob.nr_food_collected()
-                print(f"/n I found {objects_found} food objects!!")
-                rob.talk(f"Hello, I found {objects_found} food objects!!")
+            
+            if new_state[3] == True:
 
+                rob.talk(f"Found red object!")
                 done = True
-                if isinstance(rob, SimulationRobobo):
-                    rob.stop_simulation()
                 print(f"------------------- END EPISODE {episode} --------------------")
 
-            TRAINING_RESULTS.steps['objects_found'] = objects_found
             
             # Store result in csv.
             TRAINING_RESULTS.write_line_to_csv(results_path)
@@ -587,19 +584,12 @@ def train_q_table_destination(rob, run_name, q_table, q_table_path,results_path,
             q_table[state][action_index] = current_q + alpha * (reward + gamma * max_future_q - current_q)
 
             # Check collision with object, or maximum steps is reached, then stop simulation
-            objects_found = 0
             if step >= max_steps-1:
-                objects_found = rob.nr_food_collected()
-                print(f"/n I found {objects_found} food objects!!")
-                rob.talk(f"Hello, I found {objects_found} food objects!!")
-
                 done = True
                 if isinstance(rob, SimulationRobobo):
                     rob.stop_simulation()
                 print(f"------------------- END EPISODE {episode} --------------------")
 
-            TRAINING_RESULTS.steps['objects_found'] = objects_found
-            
             # Store result in csv.
             TRAINING_RESULTS.write_line_to_csv(results_path)
 
@@ -631,9 +621,11 @@ def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
 
     # Build up state
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
-    state_greenness, greenness_direction = get_state_greenness(state_img)
+    state_redness, redness_direction = get_state_redness(state_img)
 
-    state = (1,state_greenness, greenness_direction)        
+    state_object = get_state_object()
+
+    state = (1, state_redness, redness_direction, state_object)        
     done = False
 
     while True:
@@ -649,18 +641,12 @@ def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
 
         print(f"Moved from state {state} to {new_state} by going {action}.")
 
+        if new_state[3] == True:
+            rob.talk(f"Found red object!")
+            done = True
+
         # Transition to the new state
         state = new_state
-
-        # Check if robot has collided, then stop simulation
-        #if rob.nr_food_collected == 5: 
-         #   done = True
-
-          #  rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
-
-
-#            if isinstance(rob, SimulationRobobo):
- #               rob.stop_simulation()
 
         if done:
             break
@@ -669,6 +655,9 @@ def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
 
 # Training function using Q-learning
 def play_q_table_destination(rob, q_table, epsilon, hardware_flag=False):
+
+        # Initialize Training Object and CSV to store results
+    TRAINING_RESULTS = []
 
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
@@ -699,16 +688,6 @@ def play_q_table_destination(rob, q_table, epsilon, hardware_flag=False):
 
         # Transition to the new state
         state = new_state
-
-        # Check if robot has collided, then stop simulation
-        #if rob.nr_food_collected == 5: 
-         #   done = True
-
-          #  rob.talk(f"Hello, I found {rob.nr_food_collected()} food objects!!")
-
-
-#            if isinstance(rob, SimulationRobobo):
- #               rob.stop_simulation()
 
         if done:
             break
