@@ -195,8 +195,8 @@ def get_IR_values(rob) -> list:
     #left_left_IR = ir_values[7]
     center_IR = ir_values[4]
     #right_right_IR = ir_values[5]
-
-    TRAINING_RESULTS.steps['center_IR'] = center_IR
+    try:TRAINING_RESULTS.steps['center_IR'] = center_IR
+    except: pass
 
     return round(center_IR)
 
@@ -286,7 +286,8 @@ def img_redness_direction(image) -> int:
 
     # Count the number of red pixels in each section
     red_pixel_counts = [np.count_nonzero(section) for section in sections]
-    TRAINING_RESULTS.steps['red_pixels'] = red_pixel_counts
+    try: TRAINING_RESULTS.steps['red_pixels'] = red_pixel_counts
+    except: pass
 
     # Determine which section has the most red pixels
     max_index = np.argmax(red_pixel_counts)
@@ -376,10 +377,12 @@ def get_state(rob, thresholds, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN
     state_ir = value_to_bin(get_IR_values(rob), thresholds)
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
     state_greenness, green_direction = get_state_greenness(state_img, lower_color, higher_color)
+    try:
+        TRAINING_RESULTS.steps['center_bin'] = state_ir
+        TRAINING_RESULTS.steps['greenness_bin'] = state_greenness
+        TRAINING_RESULTS.steps['green_direction'] = green_direction
 
-    TRAINING_RESULTS.steps['center_bin'] = state_ir
-    TRAINING_RESULTS.steps['greenness_bin'] = state_greenness
-    TRAINING_RESULTS.steps['green_direction'] = green_direction
+    except: pass
 
     return (state_ir,state_greenness, green_direction)
 
@@ -656,8 +659,6 @@ def play_q_table_phase1(rob, q_table, epsilon, hardware_flag=False):
 # Training function using Q-learning
 def play_q_table_phase2(rob, q_table, epsilon, hardware_flag=False):
 
-        # Initialize Training Object and CSV to store results
-    TRAINING_RESULTS = []
 
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()

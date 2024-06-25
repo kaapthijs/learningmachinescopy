@@ -42,6 +42,6 @@ if __name__ == "__main__":
     #print_q_table(trained_q_table, num_entries=60)
 
     #play_q_table_object(rob, trained_q_table, epsilon=0.05, hardware_flag=True)
-    play_q_table_phase2(rob, trained_q_table, epsilon=0.05, hardware_flag=True)
+    play_q_table_phase2(rob, trained_q_table, epsilon=0.05, hardware_flag=False)
     
     #test_robo(rob)
