@@ -446,7 +446,7 @@ def simulate_robot_action(rob, action=None):
 
 
 # Training function using Q-learning
-def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table_phase1(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     global TRAINING_RESULTS
     # Initialize Training Object and CSV to store results
     clear_csv(results_path)
@@ -529,7 +529,7 @@ def train_q_table_object(rob, run_name, q_table, q_table_path,results_path, num_
 
 
 # Training function using Q-learning
-def train_q_table_destination(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
+def train_q_table_phase2(rob, run_name, q_table, q_table_path,results_path, num_episodes=200, max_steps=40, alpha=0.1, gamma=0.9, epsilon=0.1):
     global TRAINING_RESULTS
     # Initialize Training Object and CSV to store results
     clear_csv(results_path)
@@ -610,7 +610,7 @@ def train_q_table_destination(rob, run_name, q_table, q_table_path,results_path,
 
 
 # Training function using Q-learning
-def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
+def play_q_table_phase1(rob, q_table, epsilon, hardware_flag=False):
 
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
@@ -654,7 +654,7 @@ def play_q_table_object(rob, q_table, epsilon, hardware_flag=False):
     print_q_table(q_table)
 
 # Training function using Q-learning
-def play_q_table_destination(rob, q_table, epsilon, hardware_flag=False):
+def play_q_table_phase2(rob, q_table, epsilon, hardware_flag=False):
 
         # Initialize Training Object and CSV to store results
     TRAINING_RESULTS = []
