@@ -46,8 +46,8 @@ GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([85, 237, 85])
 
-GREEN_DIRECTION_BINS = 4
-GREEN_DIRECTIONS = [0,1,2,3]
+GREEN_DIRECTION_BINS = 5
+GREEN_DIRECTIONS = [1,2,3,4,5]
 
 # Define Redness Constans
 RED_BINS = 4 # 0,1,2,3
@@ -79,13 +79,13 @@ FORWARD_SPEED_LEFT = 50
 FORWARD_SPEED_RIGHT = 50
 FORWARD_DURATION = 300
 
-RIGHT_SPEED_LEFT = 30
-RIGHT_SPEED_RIGHT = -30
-RIGHT_DURATION = 100
+RIGHT_SPEED_LEFT = 50
+RIGHT_SPEED_RIGHT = -10
+RIGHT_DURATION = 460
 
-LEFT_SPEED_LEFT = -30
-LEFT_SPEED_RIGHT = 30
-LEFT_DURATION = 100
+LEFT_SPEED_LEFT = -10
+LEFT_SPEED_RIGHT = 50
+LEFT_DURATION = 460
 
 FORWARD_SPEED_LEFT_HDW = 100
 FORWARD_SPEED_RIGHT_HDW = 100
@@ -104,6 +104,7 @@ IMAGE_HEIGHT = 512
 IMAGE_WIDTH = 512
 IMAGE_DEPTH = 3 #RGB
 CLIP_HEIGHT = IMAGE_HEIGHT // 3
+CLIP_WIDTH = IMAGE_WIDTH // 4
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -224,7 +225,7 @@ def get_state_img(rob: IRobobo, dir_str):
     image = rob.get_image_front()
 
     # clip the upper part of the image
-    clipped_image = image[CLIP_HEIGHT:, :]
+    clipped_image = image[CLIP_HEIGHT:, CLIP_WIDTH:-CLIP_WIDTH]
     cv2.imwrite(dir_str, clipped_image) # store image for testing reasons
 
     return clipped_image
@@ -245,8 +246,10 @@ def img_greenness_direction(image) -> int:
 
     sections = [
         image[:, :section_width],
-        image[:, section_width:3*section_width],
-        image[:, 3*section_width:]
+        image[:, section_width:2*section_width],
+        image[:, 2*section_width:3*section_width],
+        image[:, 3*section_width:4*section_width],
+        image[:, 4*section_width:]
     ]
 
     # Count the number of green pixels in each section
@@ -259,7 +262,7 @@ def img_greenness_direction(image) -> int:
     if all(value == 0 for value in green_pixel_counts):
         return 0
     else:
-        return max_index+1
+        return max_index
 
 def img_redness_direction(image) -> int:
     # Split the mask into five vertical sections
@@ -387,8 +390,10 @@ def simulate_robot_action(rob, action=None):
     # move robot and observe new state
     next_state = play_robot_action(rob, action)
     reward = 0
+    done=False
 
     # Compute reward of action, state:(IR_Distance, %Greenness, Dir.Greenness)
+    """
     if next_state[0]==COLLISION_STATE and next_state[1]==FOOD_HIT_STATE:   # Check if collected food: Close distance AND Green
         reward += FOOD_REWARD
         if action == 'forward':
@@ -410,7 +415,7 @@ def simulate_robot_action(rob, action=None):
     if next_state[0] == 0:
         done = True
     else: done = False
-
+    """
     return next_state, reward, done
 
 
@@ -437,7 +442,9 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             print("\n")
 
         # Move phone to start view
-        rob.set_phone_tilt_blocking(109, 20)
+        rob.set_phone_tilt_blocking(109, 60)
+        rob.set_phone_tilt_blocking(109, 60)
+        rob.move_blocking(50,50,400)
 
         # Build up state
         state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
@@ -455,10 +462,10 @@ def train_q_table(rob, run_name, q_table, q_table_path,results_path, num_episode
             action, action_index = get_action(q_table, state, epsilon)
             TRAINING_RESULTS.steps['action'] = action
 
-            # Take the action and observe the new state and reward
+            # Take the action and observe the new state and reward  state:[IR, %Green, Direction Green]
             new_state, reward, done = simulate_robot_action(rob, action)
             if new_state[1]>state[1]: reward += GREEN_REWARD
-            if new_state[1]<state[1] and action != "forward" : reward -= GREEN_REWARD
+            if new_state[1]<state[1] and action != "forward" : reward -= 2*GREEN_REWARD
 
             print(f"Moved from state {state} to {new_state} by going {action}, got new reward {reward}")
             TRAINING_RESULTS.steps['new_state'] = new_state
