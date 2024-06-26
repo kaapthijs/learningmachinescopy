@@ -36,7 +36,8 @@ IR_BIN_THRESHOLDS = [4,7,550]
 IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
 
 
-OBJECT_THRESHOLD = 50
+RED_OBJECT_THRESHOLD = 50
+GREEN_OBJECT_THRESHOLD = 60
 COLOR_BIN_THRESHOLDS = [1, 20, 45]
 
 
@@ -97,13 +98,13 @@ FORWARD_SPEED_LEFT = 50
 FORWARD_SPEED_RIGHT = 50
 FORWARD_DURATION = 300
 
-RIGHT_SPEED_LEFT = 50
+RIGHT_SPEED_LEFT = 40
 RIGHT_SPEED_RIGHT = -10
-RIGHT_DURATION = 80
+RIGHT_DURATION = 50
 
 LEFT_SPEED_LEFT = -10
-LEFT_SPEED_RIGHT = 50
-LEFT_DURATION = 80
+LEFT_SPEED_RIGHT = 40
+LEFT_DURATION = 50
 
 FORWARD_SPEED_LEFT_HDW = 100
 FORWARD_SPEED_RIGHT_HDW = 100
@@ -126,7 +127,7 @@ CLIP_WIDTH = IMAGE_WIDTH // 4
 
 IMAGE_CENTER_Y = IMAGE_WIDTH // 2
 IMAGE_OBJECT_HEIGHT = 80
-IMAGE_OBJECT_WIDHT = 100
+IMAGE_OBJECT_WIDTH = 100
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -264,7 +265,7 @@ def calculate_img_colorness(image) -> int:
 # Return section with highest number of color pixels
 def img_color_direction(sections) -> int:
     color_pixel_counts = [np.count_nonzero(section) for section in sections]
-    
+
     try: TRAINING_RESULTS.steps['green_pixels'] = color_pixel_counts
     except: pass
 
@@ -275,12 +276,12 @@ def img_color_direction(sections) -> int:
         return 0
 
 # Functiont that retrieves greenness and computes greenness bin
-def get_state_color(image):
+def get_state_color_sq(image):
     # Split the mask into vertical sections
     height, width = image.shape
 
-    center_left_y = (width//2) - (IMAGE_OBJECT_WIDHT//2)
-    center_right_y = (width//2) + (IMAGE_OBJECT_WIDHT//2)
+    center_left_y = (width//2) - (IMAGE_OBJECT_WIDTH//2)
+    center_right_y = (width//2) + (IMAGE_OBJECT_WIDTH//2)
 
     sections = [
         image[:, :center_left_y],
@@ -299,6 +300,57 @@ def get_state_color(image):
 
     return color_bin, color_direction
 
+# Function that retrieves greenness and computes greenness bin
+def get_state_color_tri(image):
+    # Split the mask into vertical sections
+    height, width = image.shape
+
+    center_left_y = (width // 2) - (IMAGE_OBJECT_WIDTH // 2)
+    center_right_y = (width // 2) + (IMAGE_OBJECT_WIDTH // 2)
+
+    top_width = 40  # Adjust this value to control the width of the top of the triangle
+
+    # Create a mask for the triangular center section
+    mask = np.zeros_like(image, dtype=np.uint8)
+    pts = np.array([
+        [center_left_y, height - 1], 
+        [center_right_y, height - 1], 
+        [(width // 2) - top_width, 0],
+        [(width // 2) + top_width, 0]
+    ], dtype=np.int32)
+    cv2.fillPoly(mask, [pts], (255))
+
+    # Apply the mask to get the triangular center section
+    image_center = cv2.bitwise_and(image, mask)
+
+    # Save the center image for testing reasons
+    cv2.imwrite(str(FIGRURES_DIR / "center_view.png"), image_center)
+
+    # Create masks for the left and right sections
+    left_mask = np.zeros_like(image, dtype=np.uint8)
+    cv2.fillPoly(left_mask, [np.array([[0, 0], [0, height - 1], [center_left_y, height - 1], [width // 2, 0]], dtype=np.int32)], (255))
+
+    right_mask = np.zeros_like(image, dtype=np.uint8)
+    cv2.fillPoly(right_mask, [np.array([[width, 0], [width, height - 1], [center_right_y, height - 1], [width // 2, 0]], dtype=np.int32)], (255))
+
+    # Apply the masks to get the left and right sections
+    image_left = cv2.bitwise_and(image, left_mask)
+    # Save the center image for testing reasons
+    cv2.imwrite(str(FIGRURES_DIR / "left_view.png"), image_left)
+
+    image_right = cv2.bitwise_and(image, right_mask)
+    # Save the center image for testing reasons
+    cv2.imwrite(str(FIGRURES_DIR / "right_view.png"), image_right)
+
+    sections = [image_left, image_center, image_right]
+
+    center_colorness = calculate_img_colorness(image_center)
+    color_bin = value_to_bin(center_colorness, thresholds= COLOR_BIN_THRESHOLDS)
+    color_direction = img_color_direction(sections)
+
+    print(f"The % of color in center is {center_colorness} ({color_bin}), in direction {color_direction}")
+
+    return color_bin, color_direction
 # function that returns color filtered image
 def filter_red(img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR):
     mask_red = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), lower_color, higher_color)
@@ -313,19 +365,17 @@ def filter_green(img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_C
 
     return mask_green
 
-def get_state_object(image):
+def get_state_object_per(image):
     # clip image to object detection size
     height, width = image.shape
     
-    object_view = image[height-IMAGE_OBJECT_HEIGHT:, (width//2)-(IMAGE_OBJECT_WIDHT//2):(width//2)+(IMAGE_OBJECT_WIDHT//2)]
+    object_view = image[height-IMAGE_OBJECT_HEIGHT:, (width//2)-(IMAGE_OBJECT_WIDTH//2):(width//2)+(IMAGE_OBJECT_WIDTH//2)]
     cv2.imwrite(str(FIGRURES_DIR / "object_view.png"), object_view) # store image for testing reasons
 
     colorness = calculate_img_colorness(object_view)
     print(f"colorness of object view is : {colorness}")
 
-    if colorness >= OBJECT_THRESHOLD:
-        return True
-    else: return False
+    return colorness
 
 # Function that gets state
 def get_state(rob, color):
@@ -334,17 +384,23 @@ def get_state(rob, color):
     # get clipped image
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
     
-    # filter for color
+    # filter for color and get state components
     state_img_filter = None
     if color == 'red':
-        state_img_filter = filter_red(state_img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR)    
+        state_img_filter = filter_red(state_img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR)
+        state_colorness, state_direction = get_state_color_tri(state_img_filter)    # use triangle view
     
     if color == 'green':
-        state_img_filter = filter_green(state_img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR)    
+        state_img_filter = filter_green(state_img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR)
+        state_colorness, state_direction = get_state_color_sq(state_img_filter)     # use square view
     
-    # get state components
-    state_colorness, state_direction = get_state_color(state_img_filter)
-    state_found_object = get_state_object(state_img_filter)
+    state_object_per = get_state_object_per(state_img_filter)
+
+    state_found_object = False
+    if color=='red' and state_object_per>=RED_OBJECT_THRESHOLD:
+        state_found_object = True
+    elif color=='green' and state_object_per>=GREEN_OBJECT_THRESHOLD:
+        state_found_object = True
 
     try:
         #TRAINING_RESULTS.steps['center_bin'] = state_ir
@@ -371,9 +427,12 @@ def compute_reward(state, new_state):       # state: [Object_Found, % Center Col
     # if increased direction
     if new_state[2] ==2 : reward += DIRECTION_REWARD
     if state[2] != 2 and new_state[2] ==2: reward += 2*DIRECTION_REWARD
+    if state[2] == 0 and new_state[2] != 0: reward += DIRECTION_REWARD
     
     # if de-creased direction
     if state[2]==2 and new_state[2] != 2: reward -= 3       # not to hard penalty when driving forward and object is far away
+
+    if state[2]!= 0 and new_state[2] == 0: reward -= 30
 
     return reward
 
@@ -469,6 +528,7 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
             if new_state[0] == True:
                 rob.talk(f"Found object!")
                 done = True
+                print("-----------------Found RED -----------------\n")
                 print(f"------------------- END EPISODE {episode} --------------------")
 
             
@@ -481,6 +541,10 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
             if done:
                 break
         
+        if done:
+            print("-----------------Collecting RED -----------------\n")
+            rob.move_blocking(40,40,200)
+
         if isinstance(rob, SimulationRobobo):
             rob.stop_simulation()
 
@@ -505,6 +569,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
     rob.set_phone_tilt_blocking(109, 20)
 
     # Build up state for RED
+    print("-----------------Searching RED -----------------\n")
     state = get_state(rob, color='red')    
     done = False
 
@@ -524,6 +589,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
         print(f"              by {action}")
 
         if new_state[0] == True:
+            print("-----------------Found RED -----------------\n")
             rob.talk(f"Found red object!")
             done = True
 
@@ -534,9 +600,10 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
             break
     
     # move into object
-    rob.move_blocking(40,40,200)
+    rob.move_blocking(40,40,400)
 
     # Build up state for GREEN
+    print("-----------------Searching GREEN-----------------\n")
     state = get_state(rob, color='green')    
     done = False
 
@@ -556,6 +623,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
         print(f"              by {action}")
 
         if new_state[0] == True:
+            print("------------------ Found GREEN -----------------\n")
             rob.talk(f"Found green object!")
             done = True
 
@@ -567,7 +635,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
 
     
     # move into object
-    rob.move_blocking(40,40,200)
+    rob.move_blocking(40,40,400)
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
@@ -684,7 +752,7 @@ def test_robo_blocks(rob):
     
     section_height = height // (RED_DIRECTION_BINS*2)
 
-    image = image[5*section_height:, IMAGE_CENTER_Y-IMAGE_OBJECT_WIDHT/2:IMAGE_CENTER_Y+IMAGE_OBJECT_WIDHT/2]
+    image = image[5*section_height:, IMAGE_CENTER_Y-IMAGE_OBJECT_WIDTH/2:IMAGE_CENTER_Y+IMAGE_OBJECT_WIDTH/2]
     cv2.imwrite(str(FIGRURES_DIR / "red_object.png"), image) # store image for testing reasons
 
     # get red mask
@@ -694,33 +762,3 @@ def test_robo_blocks(rob):
 
     redness = calculate_img_colorness(mask_red)
     print(f"Redness is : {redness}")
-
-
-
-
-
-# Build up state
-
-################## Sketch 1)
-
-# Getting RED Object
-# State[ Center_IR, % Red, Direction Red]       : Action ['left', 'forward', 'right'] (pivot/move to next direction bin)
-
-# Getting to GREEN surface
-# State[ Center_IR, % Green, Direction Green]   : Action ['left', 'forward', 'right']
-
-
-# Pro:  Could steer into Objective
-# Con:  Difficult reward function
-
-
-
-################## Sketch 2)
-# Pro:  Simple reward function
-# Con:  Assumes hardware drives straight forward 
-
-# Searching Objective
-# State[ Center_IR, Red/Green Boolean, % color, Direction color]       : Action ['left', 'right'] (pivot to next direction bin)
-
-# Drive
-# State[ Center_IR, % Color]   : Action ['forward']
