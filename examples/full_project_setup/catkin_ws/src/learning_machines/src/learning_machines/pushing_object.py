@@ -308,15 +308,12 @@ def get_state_color_tri(image):
     center_left_y = (width // 2) - (IMAGE_OBJECT_WIDTH // 2)
     center_right_y = (width // 2) + (IMAGE_OBJECT_WIDTH // 2)
 
-    top_width = 40  # Adjust this value to control the width of the top of the triangle
-
     # Create a mask for the triangular center section
     mask = np.zeros_like(image, dtype=np.uint8)
     pts = np.array([
         [center_left_y, height - 1], 
         [center_right_y, height - 1], 
-        [(width // 2) - top_width, 0],
-        [(width // 2) + top_width, 0]
+        [(width // 2), 0]
     ], dtype=np.int32)
     cv2.fillPoly(mask, [pts], (255))
 
@@ -600,7 +597,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
             break
     
     # move into object
-    rob.move_blocking(40,40,400)
+    rob.move_blocking(40,40,1400)
 
     # Build up state for GREEN
     print("-----------------Searching GREEN-----------------\n")
@@ -634,8 +631,9 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
             break
 
     
-    # move into object
-    rob.move_blocking(40,40,400)
+    # move object
+    rob.move_blocking(40,40,800)
+    rob.move_blocking(-40,-40,1800)
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
