@@ -1,13 +1,13 @@
 import csv
 
 class Training_Results:
-    def __init__(self, run_name,ir_bin_thresholds,green_bin_thresholds,num_episodes,max_steps,alpha,gamma,epsilon):
-        # Training Results run name
+    def __init__(self, run_name, color, color_bin_thresholds,num_episodes,max_steps,alpha,gamma,epsilon):
+        # Training Results name
         self.run_name = run_name
 
         # Robot constants
-        self.ir_bin_thresholds = ir_bin_thresholds
-        self.green_bin_thresholds = green_bin_thresholds
+        self.color = color
+        self.color_bin_thresholds = color_bin_thresholds
 
         # Training_Results constants
         self.num_episodes = num_episodes
@@ -19,20 +19,14 @@ class Training_Results:
         # Episode values, change for every episode in training loop
         self.steps = {'episode': None,
                       'step' : None,
-                      'center_IR': None,
-                      'center_bin': None,
-                      'green_pixels': None,
-                      'green_direction': None,
-                      'greenness_per': None,
-                      'greenness_bin': None,
-                      'red_pixels': None,
-                      'red_direction': None,
+                      'color_direction': None,
+                      'center_color_per': None,
+                      'center_color_bin': None,
+                      'object_view_per': None,
                       'state': None,
                       'action': None,
                       'new_state': None,
-                      'reward': None,
-                      'objects_found': None}
-
+                      'reward': None}
 
     # function that creates a list of all variable names except 'steps'
     def get_header(self):

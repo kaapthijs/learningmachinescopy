@@ -23,23 +23,14 @@ from learning_machines import Training_Results
 global TRAINING_RESULTS
 
 # GLOBAL VARIABLES
-# Define number of sensors used
-NUM_SENSORS = 1
 
 # Define the possible actions
 ACTIONS = ['left', 'forward', 'right']
 NUM_ACTIONS = len(ACTIONS)
 
-# Define number of InfraRed bins where sensor falls in
-IR_BINS = 4    # sensor value could be 0,1,2,3
-IR_BIN_THRESHOLDS = [4,7,550]
-IR_BIN_THRESHOLDS_HARDWARE = [-1, 20, 60]
-
-
 RED_OBJECT_THRESHOLD = 50
 GREEN_OBJECT_THRESHOLD = 60
 COLOR_BIN_THRESHOLDS = [1, 20, 45]
-
 
 # Define Greenness Constans
 GREEN_BINS = 4 # 0,1,2,3
@@ -52,9 +43,6 @@ GREEN_HIGHER_COLOR = np.array([140, 255, 140])
 GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([85, 237, 85])
 
-GREEN_DIRECTION_BINS = 3
-GREEN_DIRECTIONS = [0,1,2,3]
-
 # Define Redness Constans
 RED_BINS = 4 # 0,1,2,3
 RED_BIN_THRESHOLDS = [1, 20, 45]
@@ -66,9 +54,6 @@ RED_HIGHER_COLOR = np.array([250,80,80])
 RED_LOWER_COLOR_HARDWARE = np.array([120,0,0])
 RED_HIGHER_COLOR_HARDWARE = np.array([250,100,80])
 
-RED_DIRECTION_BINS = 3
-RED_DIRECTIONS = [0,1,2,3]
-
 # Define COLOR Constans
 COLOR_BINS = 4 # 0,1,2,3
 COLOR_BIN_THRESHOLDS = [1, 20, 45]
@@ -78,17 +63,6 @@ COLOR_DIRECTION_BINS = 4
 COLOR_DIRECTIONS = [0,1,2,3]
 
 # Define rewards of moving
-ALMOST_HIT_PENALTY = -25
-HIT_PENALTY = -50
-ALMOST_COLLISION_STATE = IR_BINS-2
-COLLISION_STATE = IR_BINS-1
-FOOD_HIT_STATE = GREEN_BINS-1
-FOOD_REWARD = 50
-GREEN_REWARD = 15
-RED_REWARD = 15
-FORWARD_REWARD = 8 # encourage getting closer to get in vision range of objects
-LEFT_REWARD = 25 # when hitting the wall straight up receive a left reward
-
 OBJECT_FOUND_REWARD = 100
 COLOR_REWARD = 10
 DIRECTION_REWARD = 5
@@ -174,22 +148,6 @@ def write_csv(data_values, dir_str):
                     f.write(';')
                 f.write('\n')
 
-def ir_values_to_bins(values, thresholds=IR_BIN_THRESHOLDS):
-    print(f"New IR-Values are : {values}")
-    state = []
-    for value in values:
-        bin_assigned = False
-        for i, threshold in enumerate(thresholds):
-            if value < threshold:
-                state.append(i)
-                bin_assigned = True
-                break
-        if not bin_assigned:
-            state.append(IR_BINS - 1)  # Assign to the last bin if no threshold matched
-    
-    print(f"Binned to state: {state}")
-    return tuple(state)
-
 # Function that transforms value to bin value
 def value_to_bin(value, thresholds):
     for i, threshold in enumerate(thresholds):
@@ -204,18 +162,6 @@ def create_csv_with_header(header_values, dir_str):
             f.write(str(item))
             f.write(';')
         f.write('\n')
-
-# Function that retrieves IR-sensor values from robot
-def get_IR_values(rob) -> list:
-    ir_values = rob.read_irs()
-
-    #left_left_IR = ir_values[7]
-    center_IR = ir_values[4]
-    #right_right_IR = ir_values[5]
-    try:TRAINING_RESULTS.steps['center_IR'] = center_IR
-    except: pass
-
-    return round(center_IR)
 
 # Funciton that moves robot
 def move_robot(rob, action):
@@ -254,7 +200,7 @@ def get_state_img(rob: IRobobo, dir_str):
     return clipped_image
 
 # Function that calculates 'colorness' in image
-def calculate_img_colorness(image) -> int:
+def get_img_color_per(image) -> int:
     # Calculate percentage 'green' pixels
     color_pixel_count = np.count_nonzero(image)
     total_pixel_count = image.size
@@ -265,9 +211,6 @@ def calculate_img_colorness(image) -> int:
 # Return section with highest number of color pixels
 def img_color_direction(sections) -> int:
     color_pixel_counts = [np.count_nonzero(section) for section in sections]
-
-    try: TRAINING_RESULTS.steps['green_pixels'] = color_pixel_counts
-    except: pass
 
     # Return max pixel section if non-zero
     if np.any(color_pixel_counts):
@@ -292,13 +235,13 @@ def get_state_color_sq(image):
     image_center = sections[1]
     cv2.imwrite(str(FIGRURES_DIR / "center_view.png"), image_center) # store image for testing reasons
     
-    center_colorness = calculate_img_colorness(image_center)
-    color_bin = value_to_bin(center_colorness, thresholds= COLOR_BIN_THRESHOLDS)
+    center_color_per = get_img_color_per(image_center)
+    center_color_bin = value_to_bin(center_color_per, thresholds= COLOR_BIN_THRESHOLDS)
     color_direction = img_color_direction(sections)
 
-    print(f"The % of color in center is {center_colorness} ({color_bin}), in direction {color_direction}")
+    print(f"The % of color in center is {center_color_per} ({center_color_bin}), in direction {color_direction}")
 
-    return color_bin, color_direction
+    return center_color_bin, color_direction
 
 # Function that retrieves greenness and computes greenness bin
 def get_state_color_tri(image):
@@ -341,13 +284,20 @@ def get_state_color_tri(image):
 
     sections = [image_left, image_center, image_right]
 
-    center_colorness = calculate_img_colorness(image_center)
-    color_bin = value_to_bin(center_colorness, thresholds= COLOR_BIN_THRESHOLDS)
+    center_color_per = get_img_color_per(image_center)
+    center_color_bin = value_to_bin(center_color_per, thresholds= COLOR_BIN_THRESHOLDS)
     color_direction = img_color_direction(sections)
 
-    print(f"The % of color in center is {center_colorness} ({color_bin}), in direction {color_direction}")
+    try:
+        TRAINING_RESULTS.steps['color_direction'] = color_direction
+        TRAINING_RESULTS.steps['center_color_per'] = center_color_per
+        TRAINING_RESULTS.steps['center_color_bin'] = center_color_bin
+    except: pass
 
-    return color_bin, color_direction
+    print(f"The % of color in center is {center_color_per} ({center_color_bin}), in direction {color_direction}")
+
+    return center_color_bin, color_direction
+
 # function that returns color filtered image
 def filter_red(img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR):
     mask_red = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), lower_color, higher_color)
@@ -362,22 +312,20 @@ def filter_green(img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_C
 
     return mask_green
 
-def get_state_object_per(image):
+def get_object_view_per(image):
     # clip image to object detection size
     height, width = image.shape
     
     object_view = image[height-IMAGE_OBJECT_HEIGHT:, (width//2)-(IMAGE_OBJECT_WIDTH//2):(width//2)+(IMAGE_OBJECT_WIDTH//2)]
     cv2.imwrite(str(FIGRURES_DIR / "object_view.png"), object_view) # store image for testing reasons
 
-    colorness = calculate_img_colorness(object_view)
+    colorness = get_img_color_per(object_view)
     print(f"colorness of object view is : {colorness}")
 
     return colorness
 
 # Function that gets state
 def get_state(rob, color):
-    #state_ir = value_to_bin(get_IR_values(rob), thresholds)
-
     # get clipped image
     state_img = get_state_img(rob, str(FIGRURES_DIR / "state_image_test1.png"))
     
@@ -385,31 +333,27 @@ def get_state(rob, color):
     state_img_filter = None
     if color == 'red':
         state_img_filter = filter_red(state_img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR)
-        state_colorness, state_direction = get_state_color_tri(state_img_filter)    # use triangle view
+        center_color_bin, color_direction = get_state_color_tri(state_img_filter)    # use triangle view
     
     if color == 'green':
         state_img_filter = filter_green(state_img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR)
-        state_colorness, state_direction = get_state_color_sq(state_img_filter)     # use square view
+        center_color_bin, color_direction = get_state_color_sq(state_img_filter)     # use square view
     
-    state_object_per = get_state_object_per(state_img_filter)
-
-    state_found_object = False
-    if color=='red' and state_object_per>=RED_OBJECT_THRESHOLD:
-        state_found_object = True
-    elif color=='green' and state_object_per>=GREEN_OBJECT_THRESHOLD:
-        state_found_object = True
-
+    object_view_per = get_object_view_per(state_img_filter)
     try:
-        #TRAINING_RESULTS.steps['center_bin'] = state_ir
-        TRAINING_RESULTS.steps['colorness_bin'] = state_colorness
-        TRAINING_RESULTS.steps['color_direction'] = state_direction
+        TRAINING_RESULTS.steps['object_view_per'] = object_view_per
+    except: pass   
 
-    except: pass
+    found_object = False
+    if color=='red' and object_view_per>=RED_OBJECT_THRESHOLD:
+        found_object = True
+    elif color=='green' and object_view_per>=GREEN_OBJECT_THRESHOLD:
+        found_object = True
 
-    return (state_found_object, state_colorness, state_direction)
+    return (found_object, center_color_bin, color_direction)
 
 # Funciton that computes reward on the action and new_state:
-def compute_reward(state, new_state):       # state: [Object_Found, % Center Colorness, Direction, Color]
+def compute_reward(state, action, new_state):       # state: [Object_Found, % Center Colorness, Direction, Color]
     reward = 0
 
     # if object has been detected
@@ -419,7 +363,7 @@ def compute_reward(state, new_state):       # state: [Object_Found, % Center Col
     if new_state[1]>state[1]: reward += COLOR_REWARD
     
     # if de-creased colorness
-    if new_state[1]<state[1]: reward -= 2*COLOR_REWARD
+    if new_state[1]<state[1] and action != "forward" : reward -= 2*COLOR_REWARD
 
     # if increased direction
     if new_state[2] ==2 : reward += DIRECTION_REWARD
@@ -428,7 +372,6 @@ def compute_reward(state, new_state):       # state: [Object_Found, % Center Col
     
     # if de-creased direction
     if state[2]==2 and new_state[2] != 2: reward -= 3       # not to hard penalty when driving forward and object is far away
-
     if state[2]!= 0 and new_state[2] == 0: reward -= 30
 
     return reward
@@ -465,9 +408,10 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
     global TRAINING_RESULTS
     # Initialize Training Object and CSV to store results
     clear_csv(results_path)
+
     TRAINING_RESULTS = Training_Results.Training_Results(run_name=run_name,
-                                        ir_bin_thresholds=IR_BIN_THRESHOLDS,
-                                        green_bin_thresholds=GREEN_BIN_THRESHOLDS,
+                                        color=color,
+                                        color_bin_thresholds=COLOR_BIN_THRESHOLDS,
                                         num_episodes=num_episodes,
                                         max_steps=max_steps,
                                         alpha=alpha,
@@ -493,6 +437,7 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
             print("Episode: ", episode, "Step: ", step)
             TRAINING_RESULTS.steps['episode'] = episode
             TRAINING_RESULTS.steps['step'] = step
+            TRAINING_RESULTS.steps['state'] = state
 
             # Choose an action, random by prob. epsilon, max, by prob 1-epsilon
             action, action_index = get_action(q_table, state, epsilon)
@@ -502,10 +447,7 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
             new_state = play_robot_action(rob, action, color)
 
             # compute reward
-            reward = compute_reward(state, new_state)
-
-            if new_state[1]>state[1]: reward += RED_REWARD
-            if new_state[1]<state[1] and action != "forward" : reward -= 2*RED_REWARD
+            reward = compute_reward(state, action, new_state)
 
             print(f"Moved from state {state}")
             print(f"        to state {new_state}")
@@ -685,78 +627,3 @@ def test_robo(rob):
 
     if isinstance(rob, SimulationRobobo):
         rob.stop_simulation()
-
-
-
-# Function to test actions
-def test_robo2(rob):
-    if isinstance(rob, SimulationRobobo):
-        rob.play_simulation()
-        print("Start simulation")
-    
-    rob.set_phone_tilt_blocking(109, 60)
-    
-    # rob.move_blocking(50, -10, 920) # 90 Degrees Right
-    # rob.move_blocking(-10, 50, 460) # 45 Degrees Left
-    # rob.move_blocking(60, 60, 2300) # 1 Grid forward
-    
-    rob.move_blocking(-15, 25, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-    rob.move_blocking(25, -15, 200)
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-
-    if isinstance(rob, SimulationRobobo):
-        rob.stop_simulation()
-
-
-
-def test_robo_blocks(rob):
-    if isinstance(rob, SimulationRobobo):
-        rob.play_simulation()
-        print("Start simulation")
-    
-    rob.set_phone_tilt_blocking(109, 60)
-
-    image = rob.get_image_front()
-    cv2.imwrite(str(FIGRURES_DIR / "test_red_block_rgb.png"), image)
-
-    total_filter = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    total_filter = cv2.inRange(image, RED_LOWER_COLOR, RED_HIGHER_COLOR)
-    cv2.imwrite(str(FIGRURES_DIR / "red_filter.png"), total_filter) # store image for testing reasons
-
-    # clip image to object detection size
-    print(image.shape)
-    height, width, _= image.shape
-    
-    section_height = height // (RED_DIRECTION_BINS*2)
-
-    image = image[5*section_height:, IMAGE_CENTER_Y-IMAGE_OBJECT_WIDTH/2:IMAGE_CENTER_Y+IMAGE_OBJECT_WIDTH/2]
-    cv2.imwrite(str(FIGRURES_DIR / "red_object.png"), image) # store image for testing reasons
-
-    # get red mask
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    mask_red = cv2.inRange(image, RED_LOWER_COLOR, RED_HIGHER_COLOR)
-    cv2.imwrite(str(FIGRURES_DIR / "red_filter_object.png"), mask_red) # store image for testing reasons
-
-    redness = calculate_img_colorness(mask_red)
-    print(f"Redness is : {redness}")
