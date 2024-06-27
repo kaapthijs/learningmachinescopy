@@ -37,11 +37,11 @@ GREEN_BINS = 4 # 0,1,2,3
 GREEN_BIN_THRESHOLDS = [1, 20, 45]
 GREEN_BIN_THRESHOLDS_HARDWARE = [5, 20, 40]
 
-GREEN_LOWER_COLOR = np.array([0, 160, 0])
-GREEN_HIGHER_COLOR = np.array([140, 255, 140])
+GREEN_LOWER_COLOR = np.array([0, 100, 0])
+GREEN_HIGHER_COLOR = np.array([100, 255, 100])
 
-GREEN_LOWER_COLOR_HARDWARE = np.array([30, 90, 30])
-GREEN_HIGHER_COLOR_HARDWARE = np.array([70, 250, 70])
+GREEN_LOWER_COLOR_HARDWARE = np.array([10, 60, 10])
+GREEN_HIGHER_COLOR_HARDWARE = np.array([100, 250, 100])
 
 # Define Redness Constans
 RED_BINS = 4 # 0,1,2,3
@@ -74,7 +74,7 @@ FORWARD_DURATION = 400
 
 RIGHT_SPEED_LEFT = 40
 RIGHT_SPEED_RIGHT = -40
-RIGHT_DURATION = 5
+RIGHT_DURATION = 50
 
 LEFT_SPEED_LEFT = -40
 LEFT_SPEED_RIGHT = 40
@@ -102,8 +102,8 @@ CLIP_WIDTH = IMAGE_WIDTH // 4
 IMAGE_CENTER_Y = IMAGE_WIDTH // 2
 IMAGE_OBJECT_HEIGHT = 80
 IMAGE_OBJECT_WIDTH = 100
-CENTER_TOP_WIDTH = 20
-CENTER_BOT_WIDTH = 60
+CENTER_TOP_WIDTH = 40
+CENTER_BOT_WIDTH = 80
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -474,7 +474,7 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
             if new_state[0] == True:
                 rob.talk(f"Found object!")
                 done = True
-                print("-----------------Found RED -----------------\n")
+                print(f"-----------------Found {color} -----------------\n")
                 print(f"------------------- END EPISODE {episode} --------------------")
 
             
@@ -488,8 +488,9 @@ def train_q_table(rob, color, run_name, q_table, q_table_path,results_path, num_
                 break
         
         if done:
-            print("-----------------Collecting RED -----------------\n")
-            rob.move_blocking(40,40,200)
+            print(f"-----------------Collecting {color} -----------------\n")
+            rob.move_blocking(40,40,400)
+            rob.move_blocking(-40,-40,800)
 
         if isinstance(rob, SimulationRobobo):
             rob.stop_simulation()
@@ -510,10 +511,11 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
     if isinstance(rob, SimulationRobobo):
         rob.play_simulation()
         print("Start simulation")
-
+    
     # Move phone to start view
     rob.set_phone_tilt_blocking(109, 20)
 
+    
     # Build up state for RED
     print("-----------------Searching RED -----------------\n")
     state = get_state(rob, color='red')    
@@ -548,6 +550,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
     # move into object
     rob.move_blocking(40,40,1400)
 
+    
     # Build up state for GREEN
     print("-----------------Searching GREEN-----------------\n")
     state = get_state(rob, color='green')    

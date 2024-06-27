@@ -23,7 +23,7 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid argument.")
 
     # SET RESULT NAMES
-    RUN_NAME = "TASK3_Test_2"
+    RUN_NAME = "TASK3_Test_3"
     q_table_path = str(RESULT_DIR)  + '/' + RUN_NAME + "_Q_table.pkl"
     result_path = str(RESULT_DIR) + '/'  + RUN_NAME + "_Results.csv"
 
@@ -34,15 +34,15 @@ if __name__ == "__main__":
     print_q_table(q_table, num_entries=60)
 
     # Train the Q-table for RED
-    train_q_table(rob,'red', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=50, epsilon=0.25)
+    #train_q_table(rob,'red', RUN_NAME, q_table, q_table_path, result_path, num_episodes=50, max_steps=50, epsilon=0.25)
 
     # Train the Q-table for GREEN
-    #train_q_table(rob,'green', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=50, epsilon=0.20)
+    #train_q_table(rob,'green', RUN_NAME, q_table, q_table_path, result_path, num_episodes=15, max_steps=50, epsilon=0.20)
 
 
     # LOAD q_table for running  
-    #trained_q_table = load_q_table(q_table_path)
-    #print_q_table(trained_q_table, num_entries=60)
+    trained_q_table = load_q_table(q_table_path)
+    print_q_table(trained_q_table, num_entries=60)
 
 
-    #play_q_table(rob, trained_q_table, epsilon=0.05, hardware_flag=False)
+    play_q_table(rob, trained_q_table, epsilon=0.05, hardware_flag=True)
