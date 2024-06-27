@@ -63,14 +63,14 @@ COLOR_DIRECTION_BINS = 4
 COLOR_DIRECTIONS = [0,1,2,3]
 
 # Define rewards of moving
-OBJECT_FOUND_REWARD = 100
+OBJECT_FOUND_REWARD = 50
 COLOR_REWARD = 10
 DIRECTION_REWARD = 5
 
 # Define global constants for movement settings
 FORWARD_SPEED_LEFT = 50
 FORWARD_SPEED_RIGHT = 50
-FORWARD_DURATION = 300
+FORWARD_DURATION = 400
 
 RIGHT_SPEED_LEFT = 40
 RIGHT_SPEED_RIGHT = -10
@@ -102,6 +102,8 @@ CLIP_WIDTH = IMAGE_WIDTH // 4
 IMAGE_CENTER_Y = IMAGE_WIDTH // 2
 IMAGE_OBJECT_HEIGHT = 80
 IMAGE_OBJECT_WIDTH = 100
+CENTER_TOP_WIDTH = 20
+CENTER_BOT_WIDTH = 60
 
 # Functions for loading and saving q-table
 def load_q_table(q_table_path):
@@ -201,7 +203,7 @@ def get_state_img(rob: IRobobo, dir_str):
 
 # Function that calculates 'colorness' in image
 def get_img_color_per(image) -> int:
-    # Calculate percentage 'green' pixels
+    # Calculate percentage 'color' pixels
     color_pixel_count = np.count_nonzero(image)
     total_pixel_count = image.size
     colorness_percentage = (color_pixel_count / total_pixel_count) * 100
@@ -218,7 +220,7 @@ def img_color_direction(sections) -> int:
     else:
         return 0
 
-# Functiont that retrieves greenness and computes greenness bin
+# Functiont that retrieves colorness and computes colorness bin
 def get_state_color_sq(image):
     # Split the mask into vertical sections
     height, width = image.shape
@@ -243,45 +245,50 @@ def get_state_color_sq(image):
 
     return center_color_bin, color_direction
 
-# Function that retrieves greenness and computes greenness bin
+# Function that retrieves colorness and computes colorness bin
 def get_state_color_tri(image):
     # Split the mask into vertical sections
     height, width = image.shape
 
-    center_left_y = (width // 2) - (IMAGE_OBJECT_WIDTH // 2)
-    center_right_y = (width // 2) + (IMAGE_OBJECT_WIDTH // 2)
+    center_top_left = [(width // 2) - (CENTER_TOP_WIDTH // 2),0]
+    center_top_right = [(width // 2) + (CENTER_TOP_WIDTH // 2),0]
+    center_bot_left = [(width // 2) - (CENTER_BOT_WIDTH // 2), height-1]
+    center_bot_right = [(width // 2) + (CENTER_BOT_WIDTH // 2), height-1]
 
+    image_top_left = [0 , 0]
+    image_top_right = [width , 0]
+    image_bot_left = [0 , height-1]
+    image_bot_right  = [width , height-1]
+    
     # Create a mask for the triangular center section
-    mask = np.zeros_like(image, dtype=np.uint8)
-    pts = np.array([
-        [center_left_y, height - 1], 
-        [center_right_y, height - 1], 
-        [(width // 2), 0]
-    ], dtype=np.int32)
-    cv2.fillPoly(mask, [pts], (255))
-
-    # Apply the mask to get the triangular center section
-    image_center = cv2.bitwise_and(image, mask)
-
-    # Save the center image for testing reasons
-    cv2.imwrite(str(FIGRURES_DIR / "center_view.png"), image_center)
+    center_mask = np.zeros_like(image, dtype=np.uint8)
+    pts = np.array([center_top_left, center_bot_left,center_bot_right,center_top_right], dtype=np.int32)
+    cv2.fillPoly(center_mask, [pts], (255))
 
     # Create masks for the left and right sections
     left_mask = np.zeros_like(image, dtype=np.uint8)
-    cv2.fillPoly(left_mask, [np.array([[0, 0], [0, height - 1], [center_left_y, height - 1], [width // 2, 0]], dtype=np.int32)], (255))
+    left_pts = np.array([image_top_left,image_bot_left,center_bot_left,center_top_left], dtype=np.int32)
+    cv2.fillPoly(left_mask, [left_pts], (255))
 
     right_mask = np.zeros_like(image, dtype=np.uint8)
-    cv2.fillPoly(right_mask, [np.array([[width, 0], [width, height - 1], [center_right_y, height - 1], [width // 2, 0]], dtype=np.int32)], (255))
+    right_pts = np.array([center_top_right,center_bot_right,image_bot_right,image_top_right], dtype=np.int32)
+    cv2.fillPoly(right_mask, [right_pts], (255))
+    
+    # Apply the mask to get the triangular center section
+    image_center = cv2.bitwise_and(image, center_mask)
 
+    # Save the center image for testing reasons
+    cv2.imwrite(str(FIGRURES_DIR / "center_view.png"), image_center)
+    
     # Apply the masks to get the left and right sections
     image_left = cv2.bitwise_and(image, left_mask)
     # Save the center image for testing reasons
     cv2.imwrite(str(FIGRURES_DIR / "left_view.png"), image_left)
-
+    
     image_right = cv2.bitwise_and(image, right_mask)
     # Save the center image for testing reasons
     cv2.imwrite(str(FIGRURES_DIR / "right_view.png"), image_right)
-
+    
     sections = [image_left, image_center, image_right]
 
     center_color_per = get_img_color_per(image_center)

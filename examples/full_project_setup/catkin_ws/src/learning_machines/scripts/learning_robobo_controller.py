@@ -34,10 +34,10 @@ if __name__ == "__main__":
     print_q_table(q_table, num_entries=60)
 
     # Train the Q-table for RED
-    train_q_table(rob,'red', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=10, epsilon=0.30)
+    train_q_table(rob,'red', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=50, epsilon=0.25)
 
     # Train the Q-table for GREEN
-    #train_q_table(rob,'green', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=40, epsilon=0.20)
+    #train_q_table(rob,'green', RUN_NAME, q_table, q_table_path, result_path, num_episodes=5, max_steps=50, epsilon=0.20)
 
 
     # LOAD q_table for running  
