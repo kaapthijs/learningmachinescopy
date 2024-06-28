@@ -37,8 +37,8 @@ GREEN_BINS = 4 # 0,1,2,3
 GREEN_BIN_THRESHOLDS = [1, 20, 45]
 GREEN_BIN_THRESHOLDS_HARDWARE = [5, 20, 40]
 
-GREEN_LOWER_COLOR = np.array([0, 100, 0])
-GREEN_HIGHER_COLOR = np.array([100, 255, 100])
+GREEN_LOWER_COLOR = np.array([36, 25, 25])
+GREEN_HIGHER_COLOR = np.array([70, 255,255])
 
 GREEN_LOWER_COLOR_HARDWARE = np.array([10, 60, 10])
 GREEN_HIGHER_COLOR_HARDWARE = np.array([100, 250, 100])
@@ -312,12 +312,13 @@ def filter_red(img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR):
 
     return mask_red
 
-# function that returns color filtered image
-def filter_green(img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
-    mask_green = cv2.inRange(img, lower_color, higher_color)
-    cv2.imwrite(str(FIGRURES_DIR / "green_filter.png"), mask_green) # store image for testing reasons
 
-    return mask_green
+def filter_green(img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        mask_green = cv2.inRange(hsv, lower_color, higher_color)
+        cv2.imwrite(str(FIGRURES_DIR / "red_filter.png"), mask_green) # store image for testing reasons
+
+        return mask_green
 
 def get_object_view_per(image):
     # clip image to object detection size
