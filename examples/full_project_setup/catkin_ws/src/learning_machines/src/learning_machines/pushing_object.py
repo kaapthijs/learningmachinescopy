@@ -590,7 +590,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
 
     
     # move object
-    rob.move_blocking(40,40,16  00)
+    rob.move_blocking(40,40,1600)
     rob.move_blocking(-40,-40,1800)
 
     if isinstance(rob, SimulationRobobo):
