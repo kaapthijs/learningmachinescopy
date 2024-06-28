@@ -519,6 +519,8 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
     
     # Build up state for RED
     print("-----------------Searching RED -----------------\n")
+    rob.play_emotion_sound(SoundEmotion.PURR)
+    rob.set_led(LedId.FRONTCENTER, LedColor.RED)
     state = get_state(rob, color='red')    
     done = False
 
@@ -549,11 +551,12 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
             break
     
     # move into object
-    rob.move_blocking(40,40,1400)
+    rob.move_blocking(40,40,1800)
 
     
     # Build up state for GREEN
     print("-----------------Searching GREEN-----------------\n")
+    rob.set_led(LedId.FRONTCENTER, LedColor.GREEN)
     state = get_state(rob, color='green')    
     done = False
 
@@ -575,6 +578,8 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
         if new_state[0] == True:
             print("------------------ Found GREEN -----------------\n")
             rob.talk(f"Found green object!")
+            rob.talk("JAJAJAJJAJAJJAJA")
+            rob.set_led(LedId.FRONTCENTER, LedColor.MAGENTA)
             done = True
 
         # Transition to the new state
@@ -585,7 +590,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
 
     
     # move object
-    rob.move_blocking(40,40,800)
+    rob.move_blocking(40,40,1200)
     rob.move_blocking(-40,-40,1800)
 
     if isinstance(rob, SimulationRobobo):
