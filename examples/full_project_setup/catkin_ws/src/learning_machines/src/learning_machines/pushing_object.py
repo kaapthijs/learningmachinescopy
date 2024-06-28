@@ -316,7 +316,7 @@ def filter_red(img, lower_color=RED_LOWER_COLOR, higher_color=RED_HIGHER_COLOR):
 def filter_green(img, lower_color=GREEN_LOWER_COLOR, higher_color=GREEN_HIGHER_COLOR):
         hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         mask_green = cv2.inRange(hsv, lower_color, higher_color)
-        cv2.imwrite(str(FIGRURES_DIR / "red_filter.png"), mask_green) # store image for testing reasons
+        cv2.imwrite(str(FIGRURES_DIR / "green_filter.png"), mask_green) # store image for testing reasons
 
         return mask_green
 
@@ -590,7 +590,7 @@ def play_q_table(rob, q_table, epsilon, hardware_flag=False):
 
     
     # move object
-    rob.move_blocking(40,40,1200)
+    rob.move_blocking(40,40,16  00)
     rob.move_blocking(-40,-40,1800)
 
     if isinstance(rob, SimulationRobobo):
